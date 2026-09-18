@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://appsurvey.local/schemas/clmrs-fact-mapping.json",
+  "title": "CLMRS Fact Mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["surveyTemplate", "surveyVersion", "factSchemaVersion", "fields"],
+  "properties": {
+    "surveyTemplate": { "type": "string" },
+    "surveyVersion": { "type": "string" },
+    "factSchemaVersion": { "type": "string" },
+    "fields": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

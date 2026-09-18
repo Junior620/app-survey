@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://appsurvey.local/schemas/clmrs-rule-pack.json",
+  "title": "CLMRS Rule Pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "country",
+    "ruleVersion",
+    "factSchemaVersion",
+    "schemaVersion",
+    "status",
+    "effectiveFrom",
+    "contentHash",
+    "sourceReferences",
+    "parameters"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "country": { "type": "string", "minLength": 2 },
+    "ruleVersion": { "type": "string" },
+    "factSchemaVersion": { "type": "string" },
+    "schemaVersion": { "type": "string" },
+    "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "RETIRED"] },
+    "effectiveFrom": { "type": "string", "format": "date-time" },
+    "effectiveTo": { "type": ["string", "null"], "format": "date-time" },
+    "contentHash": { "type": "string" },
+    "sourceReferences": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumWorkingAge",
+        "hazardousWorkMinimumAge",
+        "hazardousActivities",
+        "priorityWeights",
+        "priorityThresholds"
+      ],
+      "properties": {
+        "minimumWorkingAge": { "type": "integer", "minimum": 0 },
+        "hazardousWorkMinimumAge": { "type": "integer", "minimum": 0 },
+        "hazardousActivities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "maxWeeklyHoursByAge": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "schoolDayHours": {
+          "type": "object",
+          "properties": {
+            "start": { "type": "string" },
+            "end": { "type": "string" }
+          }
+        },
+        "priorityWeights": {
+          "type": "object",
+          "required": [
+            "outOfSchool",
+            "repeatedAbsence",
+            "priorChildLabour",
+            "agriculturalActivity",
+            "adultLabourShortage",
+            "peakHarvest",
+            "contradictoryInfo"
+          ],
+          "properties": {
+            "outOfSchool": { "type": "number" },
+            "repeatedAbsence": { "type": "number" },
+            "priorChildLabour": { "type": "number" },
+            "agriculturalActivity": { "type": "number" },
+            "adultLabourShortage": { "type": "number" },
+            "peakHarvest": { "type": "number" },
+            "contradictoryInfo": { "type": "number" }
+          }
+        },
+        "priorityThresholds": {
+          "type": "object",
+          "required": ["high", "moderate"],
+          "properties": {
+            "high": { "type": "number" },
+            "moderate": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}

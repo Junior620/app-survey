@@ -1,0 +1,32 @@
+{
+  "surveyTemplate": "protection_enfant",
+  "surveyVersion": "1",
+  "factSchemaVersion": "1.0",
+  "fields": {
+    "household.childrenCount": "pe_nb_enfants",
+    "household.adultLabourShortage": "pe_penurie_main_doeuvre",
+    "household.peakHarvest": "pe_periode_pic",
+    "visit.gpsLat": "pe_gps_lat",
+    "visit.gpsLng": "pe_gps_lng",
+    "visit.enumeratorNotes": "pe_notes_enqueteur",
+    "children": "pe_enfants",
+    "children[].childId": "pe_enfant_id",
+    "children[].birthDate": "pe_enfant_date_naissance",
+    "children[].ageYears": "pe_enfant_age",
+    "children[].inSchool": "pe_enfant_scolarise",
+    "children[].absenceDays": "pe_enfant_jours_absence",
+    "children[].schoolDaysInPeriod": "pe_enfant_jours_ecole",
+    "children[].economicActivity": "pe_enfant_activite_eco",
+    "children[].agriculturalActivity": "pe_enfant_activite_agri",
+    "children[].activities": "pe_enfant_activites",
+    "children[].hoursWorkedWeekly": "pe_enfant_heures",
+    "children[].workDuringSchool": "pe_enfant_travail_ecole",
+    "children[].absenceCausedByWork": "pe_enfant_absence_travail",
+    "children[].pesticideExposure": "pe_enfant_pesticide",
+    "children[].threatOrCoercion": "pe_enfant_menace",
+    "children[].debtBondage": "pe_enfant_dette",
+    "children[].traffickingSuspected": "pe_enfant_traite",
+    "children[].injury": "pe_enfant_blessure",
+    "children[].priorChildLabour": "pe_enfant_travail_anterieur"
+  }
+}

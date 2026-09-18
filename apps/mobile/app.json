@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "SCPB SURVEY",
+    "slug": "scpb-survey",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/branding/scpb-icon.png",
+    "splash": {
+      "image": "./assets/branding/scpb-splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#F6F7F4"
+    },
+    "scheme": "scpbsurvey",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/branding/scpb-splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F7F4"
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.scpb.survey",
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/scpb-icon.png",
+        "backgroundColor": "#F6F7F4"
+      }
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

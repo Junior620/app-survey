@@ -1,0 +1,10 @@
+{
+  "name": "@appsurvey/shared",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "react-native-paper": "^5.12.0"
+  }
+}

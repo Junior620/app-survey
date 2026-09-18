@@ -1,0 +1,13 @@
+{
+  "name": "appsurvey",
+  "private": true,
+  "scripts": {
+    "db:login": "npx supabase login",
+    "db:link": "npx supabase link --project-ref tsttdhoecetcouywjjsf",
+    "db:push": "npx supabase db push",
+    "db:status": "npx supabase migration list"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
+  }
+}

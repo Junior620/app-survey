@@ -1,0 +1,47 @@
+{
+  "id": "CM/2026.1",
+  "country": "CM",
+  "ruleVersion": "2026.1",
+  "factSchemaVersion": "1.0",
+  "schemaVersion": "1",
+  "status": "PUBLISHED",
+  "effectiveFrom": "2026-01-01T00:00:00.000Z",
+  "effectiveTo": null,
+  "contentHash": "cm-2026-1-v1",
+  "sourceReferences": [
+    "Cameroon Labour Code",
+    "ICI CLMRS / SSRTE criteria"
+  ],
+  "parameters": {
+    "minimumWorkingAge": 14,
+    "hazardousWorkMinimumAge": 18,
+    "hazardousActivities": [
+      "PESTICIDE_APPLICATION",
+      "MACHETE_USE",
+      "HEAVY_LOAD",
+      "TREE_CLIMBING",
+      "NIGHT_WORK",
+      "MOTORIZED_MACHINE"
+    ],
+    "maxWeeklyHoursByAge": {
+      "14": 20,
+      "15": 30,
+      "16": 40,
+      "17": 40
+    },
+    "schoolDayHours": { "start": "08:00", "end": "15:00" },
+    "priorityWeights": {
+      "outOfSchool": 25,
+      "repeatedAbsence": 15,
+      "priorChildLabour": 25,
+      "agriculturalActivity": 15,
+      "adultLabourShortage": 10,
+      "peakHarvest": 5,
+      "contradictoryInfo": 10
+    },
+    "priorityThresholds": {
+      "high": 60,
+      "moderate": 30
+    }
+  }
+}
