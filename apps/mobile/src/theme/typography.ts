@@ -1,6 +1,9 @@
 /**
  * SCPB SURVEY - Design System Typography Tokens
  * Source Sans 3 — single family, few weights, terrain-readable.
+ *
+ * On Android, never combine a weight-specific fontFamily (e.g. SourceSans3_700Bold)
+ * with a mismatched fontWeight — the text can render invisible.
  */
 
 import { TextStyle, Platform } from 'react-native';
@@ -14,6 +17,11 @@ const family = {
 
 /** Fallback while fonts load or in tests */
 const systemFallback = Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' });
+
+/** Weight for iOS; Android relies on the named face alone. */
+function weight(w: TextStyle['fontWeight']): TextStyle['fontWeight'] | undefined {
+  return Platform.OS === 'android' ? undefined : w;
+}
 
 export const typography = {
   fontFamily: {
@@ -58,101 +66,99 @@ export const typography = {
       fontFamily: family.bold,
       fontSize: 32,
       lineHeight: 40,
-      fontWeight: '700',
-      letterSpacing: -0.3,
+      fontWeight: weight('700'),
+      letterSpacing: 0,
     } as TextStyle,
     h1: {
       fontFamily: family.bold,
       fontSize: 28,
       lineHeight: 36,
-      fontWeight: '700',
-      letterSpacing: -0.2,
+      fontWeight: weight('700'),
+      letterSpacing: 0,
     } as TextStyle,
     h2: {
       fontFamily: family.bold,
       fontSize: 24,
       lineHeight: 32,
-      fontWeight: '700',
+      fontWeight: weight('700'),
       letterSpacing: 0,
     } as TextStyle,
     h3: {
       fontFamily: family.semibold,
       fontSize: 20,
       lineHeight: 28,
-      fontWeight: '600',
+      fontWeight: weight('600'),
       letterSpacing: 0,
     } as TextStyle,
     titleLarge: {
       fontFamily: family.semibold,
       fontSize: 18,
       lineHeight: 24,
-      fontWeight: '600',
+      fontWeight: weight('600'),
       letterSpacing: 0,
     } as TextStyle,
     titleMedium: {
       fontFamily: family.semibold,
       fontSize: 16,
       lineHeight: 22,
-      fontWeight: '600',
+      fontWeight: weight('600'),
       letterSpacing: 0,
     } as TextStyle,
     titleSmall: {
       fontFamily: family.semibold,
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: '600',
+      fontWeight: weight('600'),
       letterSpacing: 0,
     } as TextStyle,
     bodyLarge: {
       fontFamily: family.regular,
       fontSize: 16,
       lineHeight: 24,
-      fontWeight: '400',
+      fontWeight: weight('400'),
       letterSpacing: 0.15,
     } as TextStyle,
     bodyMedium: {
       fontFamily: family.regular,
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: '400',
+      fontWeight: weight('400'),
       letterSpacing: 0.1,
     } as TextStyle,
     bodySmall: {
       fontFamily: family.regular,
       fontSize: 13,
       lineHeight: 18,
-      fontWeight: '400',
+      fontWeight: weight('400'),
       letterSpacing: 0.1,
     } as TextStyle,
     labelLarge: {
       fontFamily: family.semibold,
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: '600',
+      fontWeight: weight('600'),
       letterSpacing: 0.1,
     } as TextStyle,
     labelMedium: {
       fontFamily: family.medium,
       fontSize: 13,
       lineHeight: 18,
-      fontWeight: '500',
+      fontWeight: weight('500'),
       letterSpacing: 0.15,
     } as TextStyle,
     labelSmall: {
       fontFamily: family.medium,
       fontSize: 13,
       lineHeight: 16,
-      fontWeight: '500',
+      fontWeight: weight('500'),
       letterSpacing: 0.15,
     } as TextStyle,
     meta: {
       fontFamily: family.regular,
       fontSize: 13,
       lineHeight: 18,
-      fontWeight: '400',
+      fontWeight: weight('400'),
       letterSpacing: 0.1,
     } as TextStyle,
   },
-} as const;
-
-export type Typography = typeof typography;
+};

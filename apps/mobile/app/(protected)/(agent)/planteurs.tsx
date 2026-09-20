@@ -23,6 +23,11 @@ import {
 } from '../../../src/data';
 import { haptics } from '../../../src/utils/haptics';
 
+function formatPlanteurName(item: { prenoms?: string | null; nom?: string | null; code?: string }) {
+  const full = `${item.prenoms ?? ''} ${item.nom ?? ''}`.trim().replace(/\s+/g, ' ');
+  return full || item.code || '—';
+}
+
 export default function PlanteursTabScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -122,11 +127,11 @@ export default function PlanteursTabScreen() {
                 }}
               >
                 <SemanticIcon name="producer" size={20} color={colors.vert} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>
-                    {item.prenoms} {item.nom}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.name} numberOfLines={2}>
+                    {formatPlanteurName(item)}
                   </Text>
-                  <Text style={styles.meta}>
+                  <Text style={styles.meta} numberOfLines={1}>
                     {item.code}
                     {item.telephone ? ` · ${item.telephone}` : ''}
                   </Text>
@@ -189,8 +194,7 @@ const styles = StyleSheet.create({
     minHeight: 64,
   },
   name: {
-    ...typography.presets.labelLarge,
-    fontWeight: '700',
+    ...typography.presets.titleMedium,
     color: colors.texte,
   },
   meta: {
@@ -202,6 +206,5 @@ const styles = StyleSheet.create({
     color: colors.vert,
     textAlign: 'center',
     marginTop: spacing.m,
-    fontWeight: '600',
   },
 });

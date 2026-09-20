@@ -204,6 +204,10 @@ async function pushOne(
     await upsertMirror('planteurs', {
       ...base,
       site_id: payload.siteId ?? payload.site_id ?? null,
+      code: String(payload.code ?? ''),
+      nom: String(payload.nom ?? payload.lastName ?? payload.last_name ?? ''),
+      prenoms: String(payload.prenoms ?? payload.firstName ?? payload.first_name ?? ''),
+      telephone: payload.telephone ?? null,
       payload,
       status: String(payload.status ?? 'active'),
     });

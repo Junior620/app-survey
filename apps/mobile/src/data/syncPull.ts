@@ -157,6 +157,39 @@ function entityTypeForTable(table: PullMirrorTable): string {
   return map[table] || table;
 }
 
+function coercePayload(raw: unknown): Record<string, unknown> {
+  if (raw == null) return {};
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return {};
+}
+
+function pickPlanteurNames(payload: Record<string, unknown>): { nom: string; prenoms: string } {
+  const nom = String(
+    payload.nom ?? payload.lastName ?? payload.last_name ?? payload.name ?? ''
+  ).trim();
+  const prenoms = String(
+    payload.prenoms ?? payload.firstName ?? payload.first_name ?? payload.givenName ?? ''
+  ).trim();
+  if (nom || prenoms) return { nom, prenoms };
+  const full = String(payload.fullName ?? payload.full_name ?? '').trim();
+  if (!full) return { nom: '', prenoms: '' };
+  const parts = full.split(/\s+/);
+  if (parts.length === 1) return { nom: parts[0]!, prenoms: '' };
+  return { prenoms: parts.slice(0, -1).join(' '), nom: parts[parts.length - 1]! };
+}
+
 async function applyRemoteRow(
   table: PullMirrorTable,
   row: Record<string, unknown>,
@@ -193,10 +226,7 @@ async function applyRemoteRow(
     return 'conflict';
   }
 
-  const payload =
-    row.payload && typeof row.payload === 'object'
-      ? (row.payload as Record<string, unknown>)
-      : {};
+  const payload = coercePayload(row.payload);
   const ts = String(row.updated_at ?? nowIso());
   const created = String(row.created_at ?? ts);
   const status = String(row.status ?? 'active');
@@ -248,6 +278,10 @@ async function applyRemoteRow(
           `planteur ${id}: secteur_id manquant ou inconnu localement (${secteurId || '∅'})`
         );
       }
+      const names = pickPlanteurNames(payload);
+      const nom = String(row.nom ?? names.nom ?? '').trim();
+      const prenoms = String(row.prenoms ?? names.prenoms ?? '').trim();
+      const code = String(row.code ?? payload.code ?? `P-${id.slice(0, 6)}`).trim();
       await db.runAsync(
         `INSERT INTO planteurs (
           id, account_id, code, nom, prenoms, telephone, village_id, secteur_id, site_id,
@@ -265,10 +299,10 @@ async function applyRemoteRow(
         [
           id,
           ownerAccount,
-          String(payload.code ?? `P-${id.slice(0, 6)}`),
-          String(payload.nom ?? payload.lastName ?? ''),
-          String(payload.prenoms ?? payload.firstName ?? ''),
-          bind(payload.telephone),
+          code,
+          nom,
+          prenoms,
+          bind(row.telephone ?? payload.telephone),
           bind(payload.villageId ?? payload.village_id),
           secteurId,
           siteId,

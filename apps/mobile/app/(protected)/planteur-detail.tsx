@@ -89,7 +89,9 @@ export default function PlanteurDetailScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
         title={
-          planteur ? `${planteur.prenoms} ${planteur.nom}` : 'Planteur'
+          planteur
+            ? `${planteur.prenoms} ${planteur.nom}`.trim() || planteur.code
+            : 'Planteur'
         }
         subtitle={planteur?.code}
         onBack={() => router.back()}
