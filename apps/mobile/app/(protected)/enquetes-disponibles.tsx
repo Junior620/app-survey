@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -170,6 +170,6 @@ const styles = StyleSheet.create({
     gap: 6,
     ...shadows.sm,
   },
-  title: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '800' },
+  title: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
   meta: { ...typography.presets.bodySmall, color: colors.horsLigne },
 });

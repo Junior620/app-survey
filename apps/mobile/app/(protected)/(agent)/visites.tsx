@@ -279,7 +279,7 @@ export default function AgentVisitesScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond} style={styles.screen}>
       <AppHeader
         title="Visites"
-        subtitle="Vos questionnaires terrain"
+        subtitle="Aperçu démo — branchez les enquêtes réelles ensuite"
         showBack={false}
       />
 

@@ -16,6 +16,7 @@ import type {
   SectionDefinition,
   VisibilityRules,
 } from '@appsurvey/shared';
+import { deserializeLocalized, serializeLocalized, resolveLocalized } from '@appsurvey/shared';
 import { getDatabase, newId, nowIso } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import { assertQuestionnaireAdmin } from '../../survey/assertQuestionnaireAdmin';
@@ -61,13 +62,19 @@ function mapQ(r: QRow): QuestionnaireRecord {
   return {
     id: r.id,
     accountId: r.account_id,
-    title: r.title,
-    description: r.description,
+    title: resolveLocalized(deserializeLocalized(r.title), 'fr'),
+    description:
+      r.description != null
+        ? resolveLocalized(deserializeLocalized(r.description), 'fr')
+        : null,
     usage: r.usage as QuestionnaireUsage,
     category: r.category as QuestionnaireCategory,
     subjectType: r.subject_type as QuestionnaireSubjectType,
-    instructions: r.instructions,
-    confidentiality: r.confidentiality,
+    instructions:
+      r.instructions != null
+        ? resolveLocalized(deserializeLocalized(r.instructions), 'fr')
+        : null,
+    confidentiality: resolveLocalized(deserializeLocalized(r.confidentiality || ''), 'fr'),
     status: r.status as QuestionnaireStatus,
     publishedVersion: r.published_version,
     draftVersionId: r.draft_version_id,
@@ -132,7 +139,7 @@ export async function listQuestionnaires(
 
   let items = rows.map((r) => ({
     id: r.id,
-    title: r.title,
+    title: deserializeLocalized(r.title),
     category: r.category as QuestionnaireCategory,
     usage: r.usage as QuestionnaireUsage,
     status: r.status as QuestionnaireStatus,
@@ -151,7 +158,9 @@ export async function listQuestionnaires(
   }
   if (filters?.query?.trim()) {
     const q = filters.query.trim().toLowerCase();
-    items = items.filter((i) => i.title.toLowerCase().includes(q));
+    items = items.filter((i) =>
+      resolveLocalized(i.title, 'fr').toLowerCase().includes(q)
+    );
   }
   if (filters?.siteId) {
     const assigned = await db.getAllAsync<{ questionnaire_id: string }>(
@@ -321,7 +330,7 @@ async function loadOptions(questionId: string): Promise<QuestionOptionDef[]> {
   );
   return rows.map((r) => ({
     stableKey: r.stable_key,
-    label: r.label,
+    label: deserializeLocalized(r.label),
     sortOrder: r.sort_order,
     isOther: !!r.is_other,
     isExclusive: !!r.is_exclusive,
@@ -388,8 +397,8 @@ export async function loadDefinitionFromVersion(
         stableKey: qq.stable_key,
         sectionId: qq.section_id,
         type: qq.type as QuestionType,
-        label: qq.label,
-        help: qq.help_text,
+        label: deserializeLocalized(qq.label),
+        help: qq.help_text != null ? deserializeLocalized(qq.help_text) : null,
         required: !!qq.required,
         config: parseJson<QuestionConfig>(qq.config_json, {}),
         validation: parseJson<QuestionValidation>(qq.validation_json, {}),
@@ -401,7 +410,7 @@ export async function loadDefinitionFromVersion(
 
     sectionDefs.push({
       id: s.id,
-      title: s.title,
+      title: deserializeLocalized(s.title),
       sortOrder: s.sort_order,
       visibility: parseJson<VisibilityRules | null>(s.visibility_rules_json, null),
       questions: qDefs,
@@ -411,13 +420,13 @@ export async function loadDefinitionFromVersion(
   return {
     questionnaireId: q.id,
     versionNumber: version.version_number,
-    title: q.title,
-    description: q.description,
+    title: deserializeLocalized(q.title),
+    description: q.description != null ? deserializeLocalized(q.description) : null,
     usage: q.usage,
     category: q.category,
     subjectType: q.subjectType,
-    instructions: q.instructions,
-    confidentiality: q.confidentiality,
+    instructions: q.instructions != null ? deserializeLocalized(q.instructions) : null,
+    confidentiality: deserializeLocalized(q.confidentiality || ''),
     sections: sectionDefs,
   };
 }
@@ -503,7 +512,7 @@ export async function createDraftFromPublished(
         [
           sectionId,
           versionId,
-          section.title,
+          serializeLocalized(section.title),
           section.sortOrder,
           section.visibility ? JSON.stringify(section.visibility) : null,
         ]
@@ -521,8 +530,8 @@ export async function createDraftFromPublished(
             sectionId,
             question.stableKey,
             question.type,
-            question.label,
-            question.help ?? null,
+            serializeLocalized(question.label),
+            question.help != null ? serializeLocalized(question.help) : null,
             question.required ? 1 : 0,
             JSON.stringify(question.config ?? {}),
             JSON.stringify(question.validation ?? {}),
@@ -538,7 +547,7 @@ export async function createDraftFromPublished(
               newId(),
               questionId,
               opt.stableKey,
-              opt.label,
+              serializeLocalized(opt.label),
               opt.sortOrder,
               opt.isOther ? 1 : 0,
               opt.isExclusive ? 1 : 0,
@@ -599,12 +608,16 @@ export async function renameSection(
   role: AppRole | null | undefined,
   questionnaireId: string,
   sectionId: string,
-  title: string
+  title: string | { fr: string; en?: string }
 ): Promise<void> {
   assertQuestionnaireAdmin(role);
   const db = await getDatabase();
+  const localized =
+    typeof title === 'string'
+      ? title.trim() || 'Section'
+      : { fr: (title.fr || '').trim() || 'Section', en: title.en?.trim() || undefined };
   await db.runAsync(`UPDATE questionnaire_sections SET title = ? WHERE id = ?`, [
-    title.trim() || 'Section',
+    serializeLocalized(localized),
     sectionId,
   ]);
   await touchQuestionnaire(accountId, questionnaireId);
@@ -723,7 +736,7 @@ export async function addQuestion(
       await db.runAsync(
         `INSERT INTO questionnaire_options (id, question_id, stable_key, label, sort_order, is_other, is_exclusive)
          VALUES (?, ?, ?, ?, ?, 0, 0)`,
-        [newId(), id, opt.stableKey, opt.label, opt.sortOrder]
+        [newId(), id, opt.stableKey, serializeLocalized(opt.label), opt.sortOrder]
       );
     }
   });
@@ -763,8 +776,8 @@ export async function getQuestion(
     stableKey: row.stable_key,
     sectionId: row.section_id,
     type: row.type as QuestionType,
-    label: row.label,
-    help: row.help_text,
+    label: deserializeLocalized(row.label),
+    help: row.help_text != null ? deserializeLocalized(row.help_text) : null,
     required: !!row.required,
     config: parseJson(row.config_json, {}),
     validation: parseJson(row.validation_json, {}),
@@ -781,8 +794,8 @@ export async function updateQuestion(
   questionnaireId: string,
   questionId: string,
   input: {
-    label: string;
-    help?: string | null;
+    label: import('@appsurvey/shared').LocalizedString;
+    help?: import('@appsurvey/shared').LocalizedString | null;
     required: boolean;
     type?: QuestionType;
     config?: QuestionConfig;
@@ -819,8 +832,10 @@ export async function updateQuestion(
         stable_key = COALESCE(?, stable_key)
        WHERE id = ?`,
       [
-        input.label.trim(),
-        input.help?.trim() || null,
+        serializeLocalized(input.label),
+        input.help != null && input.help !== ''
+          ? serializeLocalized(input.help)
+          : null,
         input.required ? 1 : 0,
         JSON.stringify(input.config ?? {}),
         JSON.stringify(input.validation ?? {}),
@@ -840,7 +855,7 @@ export async function updateQuestion(
             newId(),
             questionId,
             opt.stableKey || `opt_${i}`,
-            opt.label,
+            serializeLocalized(opt.label),
             opt.sortOrder ?? i,
             opt.isOther ? 1 : 0,
             opt.isExclusive ? 1 : 0,
@@ -1109,7 +1124,7 @@ export async function duplicateQuestionnaire(
         [
           sectionId,
           created.versionId,
-          section.title,
+          serializeLocalized(section.title),
           section.sortOrder,
           section.visibility ? JSON.stringify(section.visibility) : null,
         ]
@@ -1127,8 +1142,8 @@ export async function duplicateQuestionnaire(
             sectionId,
             question.stableKey,
             question.type,
-            question.label,
-            question.help ?? null,
+            serializeLocalized(question.label),
+            question.help != null ? serializeLocalized(question.help) : null,
             question.required ? 1 : 0,
             JSON.stringify(question.config ?? {}),
             JSON.stringify(question.validation ?? {}),
@@ -1144,7 +1159,7 @@ export async function duplicateQuestionnaire(
               newId(),
               questionId,
               opt.stableKey,
-              opt.label,
+              serializeLocalized(opt.label),
               opt.sortOrder,
               opt.isOther ? 1 : 0,
               opt.isExclusive ? 1 : 0,

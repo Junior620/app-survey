@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+﻿import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Text, Checkbox, Card, Snackbar, Chip } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { UserRole } from '@appsurvey/shared';
 import { AppScreen } from '../../src/components/common/AppScreen';
 import { AppLogo } from '../../src/components/common/AppLogo';
@@ -13,53 +14,60 @@ import { PasswordField } from '../../src/components/common/PasswordField';
 import { PrimaryButton } from '../../src/components/common/PrimaryButton';
 import { TertiaryButton } from '../../src/components/common/TertiaryButton';
 import { OfflineBanner } from '../../src/components/common/OfflineBanner';
+import { LanguagePicker, LanguageHeaderButton } from '../../src/components/common/LanguagePicker';
 import { useKeyboardScroll } from '../../src/components/common/KeyboardAwareScrollView';
 import { colors, spacing, typography, radius, shadows } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { clearStoredSession, setOnboardingStatus } from '../../src/services/secureStore';
 import { isSupabaseConfigured } from '../../src/services/supabaseConfig';
-
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'Veuillez entrer votre identifiant ou adresse email.' })
-    .email({ message: "L'adresse email saisie est invalide (ex: agent@scpb.ci)." }),
-  password: z
-    .string()
-    .min(6, { message: 'Le mot de passe doit comporter au moins 6 caractères.' }),
-  rememberMe: z.boolean().default(true),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { haptics } from '../../src/utils/haptics';
 
 const supabaseReady = isSupabaseConfigured();
 
-function LoginHeader() {
+function LoginHeader({ onOpenLanguage }: { onOpenLanguage: () => void }) {
+  const { t } = useTranslation();
   const kb = useKeyboardScroll();
   const keyboardOpen = !!kb?.keyboardOpen;
   return (
     <View style={[styles.headerArea, keyboardOpen && styles.headerCompact]}>
+      <View style={styles.langRow}>
+        <View style={{ flex: 1 }} />
+        <LanguageHeaderButton onPress={onOpenLanguage} />
+      </View>
       <AppLogo size={keyboardOpen ? 'sm' : 'md'} showSubtitle={!keyboardOpen} style={styles.logo} />
       {!keyboardOpen ? (
         <>
-          <Text style={styles.welcomeTitle}>Bienvenue</Text>
-          <Text style={styles.subtitleText}>Système de Suivi & Traçabilité Terrain</Text>
+          <Text style={styles.welcomeTitle}>{t('auth.welcome')}</Text>
+          <Text style={styles.subtitleText}>{t('auth.tagline')}</Text>
         </>
       ) : (
-        <Text style={styles.welcomeCompact}>Connexion</Text>
+        <Text style={styles.welcomeCompact}>{t('auth.loginTitle')}</Text>
       )}
       <Text style={styles.authMode}>
-        {supabaseReady ? 'Authentification Supabase' : 'Auth locale (serveur non configuré)'}
+        {supabaseReady ? t('auth.authSupabase') : t('auth.authLocal')}
       </Text>
     </View>
   );
 }
 
 export default function S02LoginScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { login, logout, isOffline, error: authError, clearError } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [devMsg, setDevMsg] = useState<string | null>(null);
+  const [langOpen, setLangOpen] = useState(false);
+
+  const loginSchema = z.object({
+    email: z
+      .string()
+      .min(1, { message: t('auth.emailRequired') })
+      .email({ message: t('auth.emailInvalid') }),
+    password: z.string().min(6, { message: t('auth.passwordMin') }),
+    rememberMe: z.boolean().default(true),
+  });
+
+  type LoginFormData = z.infer<typeof loginSchema>;
 
   const {
     control,
@@ -119,25 +127,22 @@ export default function S02LoginScreen() {
 
   return (
     <AppScreen scrollable padding="m" backgroundColor={colors.fond}>
-      <LoginHeader />
+      <LoginHeader onOpenLanguage={() => setLangOpen(true)} />
 
       {isOffline ? (
-        <OfflineBanner
-          message="Mode Hors-Ligne : Seuls les comptes mis en cache sont accessibles."
-          style={styles.offlineBanner}
-        />
+        <OfflineBanner message={t('auth.offlineBanner')} style={styles.offlineBanner} />
       ) : null}
 
       <Card style={styles.card} mode="elevated">
         <Card.Content style={styles.cardContent}>
-          <Text style={styles.formHeading}>Connexion Utilisateur</Text>
+          <Text style={styles.formHeading}>{t('auth.userLogin')}</Text>
 
           <Controller
             control={control}
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <FormTextField
-                label="Identifiant / Email Professionnel"
+                label={t('auth.emailLabel')}
                 required
                 leftIcon="email-outline"
                 value={value}
@@ -156,7 +161,7 @@ export default function S02LoginScreen() {
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
               <PasswordField
-                label="Mot de passe"
+                label={t('auth.password')}
                 required
                 value={value}
                 onBlur={onBlur}
@@ -183,12 +188,12 @@ export default function S02LoginScreen() {
                     color={colors.vert}
                     onPress={() => onChange(!value)}
                   />
-                  <Text style={styles.rememberText}>Rester connecté</Text>
+                  <Text style={styles.rememberText}>{t('auth.rememberMe')}</Text>
                 </TouchableOpacity>
               )}
             />
             <TertiaryButton
-              title="Mot de passe oublié ?"
+              title={t('auth.forgotPassword')}
               onPress={() => router.push('/(public)/s03-forgot-password')}
               color={colors.brun}
               style={styles.forgotButton}
@@ -196,7 +201,7 @@ export default function S02LoginScreen() {
           </View>
 
           <PrimaryButton
-            title="Se connecter"
+            title={t('auth.signIn')}
             onPress={handleSubmit(onSubmit)}
             loading={isSubmitting}
             disabled={isSubmitting}
@@ -248,7 +253,7 @@ export default function S02LoginScreen() {
         }}
         duration={4000}
         action={{
-          label: 'Fermer',
+          label: t('common.close'),
           onPress: () => {
             clearError();
             setDevMsg(null);
@@ -258,6 +263,30 @@ export default function S02LoginScreen() {
       >
         {authError || devMsg}
       </Snackbar>
+
+      <Modal
+        visible={langOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLangOpen(false)}
+        statusBarTranslucent
+      >
+        <Pressable
+          style={styles.langBackdrop}
+          onPress={() => setLangOpen(false)}
+          accessibilityLabel={t('common.close')}
+        >
+          <Pressable style={styles.langSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.langTitle}>{t('settings.languageTitle')}</Text>
+            <LanguagePicker
+              onSelected={() => {
+                haptics.selection();
+                setLangOpen(false);
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
@@ -265,6 +294,12 @@ export default function S02LoginScreen() {
 const styles = StyleSheet.create({
   headerArea: { alignItems: 'center', marginBottom: spacing.l },
   headerCompact: { marginBottom: spacing.s },
+  langRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.xs,
+  },
   logo: { marginBottom: spacing.xs },
   welcomeTitle: {
     ...typography.presets.h1,
@@ -275,7 +310,7 @@ const styles = StyleSheet.create({
   welcomeCompact: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     textAlign: 'center',
   },
   subtitleText: {
@@ -332,4 +367,22 @@ const styles = StyleSheet.create({
   devClear: { marginTop: spacing.l, alignSelf: 'center' },
   snackbar: { backgroundColor: colors.erreur },
   snackbarOk: { backgroundColor: colors.vert },
+  langBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(25, 39, 32, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  langSheet: {
+    backgroundColor: colors.blanc,
+    borderTopLeftRadius: radius.card,
+    borderTopRightRadius: radius.card,
+    padding: spacing.m,
+    paddingBottom: spacing.xxl,
+  },
+  langTitle: {
+    ...typography.presets.titleMedium,
+    color: colors.texte,
+    fontWeight: '700',
+    marginBottom: spacing.m,
+  },
 });

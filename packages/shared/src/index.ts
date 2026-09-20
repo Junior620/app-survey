@@ -4,6 +4,7 @@ export * from './types/planteur';
 export * from './types/sync';
 export * from './types/permissions';
 export * from './types/questionnaire';
+export * from './i18n/localizedString';
 export * from './contracts/androidRoom';
 export * from './theme/theme';
 export * from './supabase/client';

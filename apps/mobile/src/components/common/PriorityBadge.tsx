@@ -84,8 +84,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   text: {
-    ...typography.presets.labelSmall,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    ...typography.presets.labelMedium,
+    fontWeight: '600',
   },
 });

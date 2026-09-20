@@ -54,4 +54,6 @@ export interface AuthState {
   restoreSession: () => Promise<boolean>;
   setOnboardingCompleted: (completed: boolean) => Promise<void>;
   clearError: () => void;
+  /** Re-probe network and update isOffline (used by auto-sync / foreground). */
+  refreshConnectivity: () => Promise<boolean>;
 }

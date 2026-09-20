@@ -100,6 +100,42 @@ async function hasPendingOutbox(entityType: string, entityId: string): Promise<b
   return (row?.c ?? 0) > 0;
 }
 
+async function rowExists(table: string, id: string): Promise<boolean> {
+  if (!id) return false;
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(*) as c FROM ${table} WHERE id = ?`,
+    [id]
+  );
+  return (row?.c ?? 0) > 0;
+}
+
+/** Prefer remote site id when a local site shares the same account+code (different id). */
+async function resolveSiteCodeClash(
+  ownerAccount: string,
+  remoteId: string,
+  code: string
+): Promise<void> {
+  if (!code) return;
+  const db = await getDatabase();
+  const clash = await db.getFirstAsync<{ id: string }>(
+    `SELECT id FROM sites WHERE account_id = ? AND code = ? AND id != ?`,
+    [ownerAccount, code, remoteId]
+  );
+  if (!clash) return;
+
+  await db.runAsync(`UPDATE secteurs SET site_id = ? WHERE site_id = ?`, [remoteId, clash.id]);
+  await db.runAsync(`UPDATE planteurs SET site_id = ? WHERE site_id = ?`, [remoteId, clash.id]);
+  await db.runAsync(`UPDATE missions SET site_id = ? WHERE site_id = ?`, [remoteId, clash.id]);
+  await db.runAsync(`UPDATE formations SET site_id = ? WHERE site_id = ?`, [remoteId, clash.id]);
+  await db.runAsync(`UPDATE parcelles SET site_id = ? WHERE site_id = ?`, [remoteId, clash.id]);
+  await db.runAsync(`UPDATE survey_responses SET site_id = ? WHERE site_id = ?`, [
+    remoteId,
+    clash.id,
+  ]);
+  await db.runAsync(`DELETE FROM sites WHERE id = ?`, [clash.id]);
+}
+
 function entityTypeForTable(table: PullMirrorTable): string {
   const map: Record<string, string> = {
     sites: 'site',
@@ -169,6 +205,8 @@ async function applyRemoteRow(
 
   switch (table) {
     case 'sites': {
+      const code = String(row.code ?? payload.code ?? '');
+      await resolveSiteCodeClash(ownerAccount, id, code);
       await db.runAsync(
         `INSERT INTO sites (
           id, account_id, code, name, locality, cooperative_id, status,
@@ -185,7 +223,7 @@ async function applyRemoteRow(
         [
           id,
           ownerAccount,
-          String(row.code ?? payload.code ?? ''),
+          code,
           String(row.name ?? payload.name ?? ''),
           String(row.locality ?? payload.locality ?? ''),
           coop,
@@ -198,6 +236,18 @@ async function applyRemoteRow(
       return 'applied';
     }
     case 'planteurs': {
+      const siteId = String(row.site_id ?? payload.siteId ?? payload.site_id ?? '');
+      const secteurId = String(payload.secteurId ?? payload.secteur_id ?? '');
+      if (!siteId || !(await rowExists('sites', siteId))) {
+        throw new Error(
+          `planteur ${id}: site_id manquant ou inconnu localement (${siteId || '∅'})`
+        );
+      }
+      if (!secteurId || !(await rowExists('secteurs', secteurId))) {
+        throw new Error(
+          `planteur ${id}: secteur_id manquant ou inconnu localement (${secteurId || '∅'})`
+        );
+      }
       await db.runAsync(
         `INSERT INTO planteurs (
           id, account_id, code, nom, prenoms, telephone, village_id, secteur_id, site_id,
@@ -220,8 +270,8 @@ async function applyRemoteRow(
           String(payload.prenoms ?? payload.firstName ?? ''),
           bind(payload.telephone),
           bind(payload.villageId ?? payload.village_id),
-          String(payload.secteurId ?? payload.secteur_id ?? 'unknown'),
-          String(row.site_id ?? payload.siteId ?? payload.site_id ?? 'unknown'),
+          secteurId,
+          siteId,
           coop,
           status,
           created,
@@ -259,6 +309,12 @@ async function applyRemoteRow(
       return 'applied';
     }
     case 'secteurs': {
+      const siteId = String(row.site_id ?? payload.siteId ?? payload.site_id ?? '');
+      if (!siteId || !(await rowExists('sites', siteId))) {
+        throw new Error(
+          `secteur ${id}: site_id manquant ou inconnu localement (${siteId || '∅'})`
+        );
+      }
       await db.runAsync(
         `INSERT INTO secteurs (
           id, account_id, site_id, code, name, responsable_agent_id, status,
@@ -274,7 +330,7 @@ async function applyRemoteRow(
         [
           id,
           ownerAccount,
-          String(row.site_id ?? payload.siteId ?? payload.site_id ?? ''),
+          siteId,
           String(payload.code ?? ''),
           String(payload.name ?? ''),
           bind(payload.responsableAgentId ?? payload.responsable_agent_id),
@@ -485,18 +541,26 @@ export async function pullRemoteChanges(
       }
 
       let maxUpdated = cursor;
+      const errorsBefore = result.errors.length;
       for (const raw of data ?? []) {
         const row = raw as Record<string, unknown>;
-        const outcome = await applyRemoteRow(table, row, accountId);
-        if (outcome === 'applied') result.applied += 1;
-        if (outcome === 'conflict') result.conflicts += 1;
-        const updated = String(row.updated_at ?? '');
-        if (updated > maxUpdated) maxUpdated = updated;
-        if (table === 'attachments_meta' && outcome === 'applied') {
-          result.downloadedAttachments += 1;
+        try {
+          const outcome = await applyRemoteRow(table, row, accountId);
+          if (outcome === 'applied') result.applied += 1;
+          if (outcome === 'conflict') result.conflicts += 1;
+          if (table === 'attachments_meta' && outcome === 'applied') {
+            result.downloadedAttachments += 1;
+          }
+          const updated = String(row.updated_at ?? '');
+          if (updated > maxUpdated) maxUpdated = updated;
+        } catch (rowErr) {
+          result.errors.push(
+            `${table}: ${rowErr instanceof Error ? rowErr.message : String(rowErr)}`
+          );
         }
       }
-      if (maxUpdated > cursor) {
+      // Do not advance past a page that still has row failures (retry next sync).
+      if (maxUpdated > cursor && result.errors.length === errorsBefore) {
         await setCursor(cooperativeId, table, maxUpdated);
       }
     } catch (e) {

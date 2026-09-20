@@ -221,4 +221,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  refreshConnectivity: async (): Promise<boolean> => {
+    const isOnline = await checkConnectivity(2000).catch(() => false);
+    set({ isOffline: !isOnline });
+    return isOnline;
+  },
 }));

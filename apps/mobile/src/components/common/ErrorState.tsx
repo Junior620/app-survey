@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from './PrimaryButton';
 import { SemanticIcon } from './icons';
 import { colors, radius, spacing, typography } from '../../theme';
@@ -14,25 +15,29 @@ export interface ErrorStateProps {
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  title = 'Anomalie ou erreur système',
+  title,
   message,
   onRetry,
-  retryTitle = 'Réessayer',
+  retryTitle,
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('common.systemError');
+  const resolvedRetry = retryTitle ?? t('common.retry');
+
   return (
     <View style={[styles.container, style]} testID={testID} accessibilityRole="alert">
       <View style={styles.iconCircle}>
         <SemanticIcon name="warning" size={28} color={colors.erreur} />
       </View>
 
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>{resolvedTitle}</Text>
       <Text style={styles.message}>{message}</Text>
 
       {onRetry ? (
         <View style={styles.buttonContainer}>
-          <PrimaryButton title={retryTitle} onPress={onRetry} icon="refresh" />
+          <PrimaryButton title={resolvedRetry} onPress={onRetry} icon="refresh" />
         </View>
       ) : null}
     </View>

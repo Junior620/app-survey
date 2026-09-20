@@ -4,6 +4,7 @@ import type {
   SurveyAnswerMap,
   SurveyAnswerValue,
 } from '@appsurvey/shared';
+import { resolveLocalized } from '@appsurvey/shared';
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import {
@@ -13,6 +14,7 @@ import {
   QuestionCard,
 } from '../components/common';
 import { colors, radius, spacing, typography } from '../theme';
+import { useLocaleStore } from '../stores/useLocaleStore';
 import {
   isQuestionVisible,
   isSectionVisible,
@@ -34,6 +36,7 @@ export function SurveyRenderer({
   showErrors = false,
   readOnly = false,
 }: Props) {
+  const locale = useLocaleStore((s) => s.displayLocale);
   const sections = useMemo(
     () => definition.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder),
     [definition.sections]
@@ -50,7 +53,7 @@ export function SurveyRenderer({
         if (!questions.length) return null;
         return (
           <View key={section.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionTitle}>{resolveLocalized(section.title, locale)}</Text>
             {questions.map((q) => (
               <QuestionField
                 key={q.id}
@@ -59,6 +62,7 @@ export function SurveyRenderer({
                 onChange={(v) => onChange(q.stableKey, v)}
                 showError={showErrors}
                 readOnly={readOnly}
+                locale={locale}
               />
             ))}
           </View>
@@ -74,33 +78,37 @@ function QuestionField({
   onChange,
   showError,
   readOnly,
+  locale,
 }: {
   question: QuestionDefinition;
   value: SurveyAnswerValue;
   onChange: (v: SurveyAnswerValue) => void;
   showError: boolean;
   readOnly: boolean;
+  locale: 'fr' | 'en';
 }) {
   const issue = showError ? validateQuestion(question, value) : null;
+  const label = resolveLocalized(question.label, locale);
+  const help = question.help ? resolveLocalized(question.help, locale) : undefined;
 
   if (question.type === 'info') {
     return (
       <View style={styles.infoBox}>
-        <Text style={styles.infoText}>{question.label}</Text>
-        {question.help ? <Text style={styles.help}>{question.help}</Text> : null}
+        <Text style={styles.infoText}>{label}</Text>
+        {help ? <Text style={styles.help}>{help}</Text> : null}
       </View>
     );
   }
 
   return (
     <QuestionCard
-      title={question.label}
+      title={label}
       required={question.required}
-      helpText={question.help || undefined}
+      helpText={help || undefined}
       errorMessage={issue?.message}
       status={issue ? 'error' : undefined}
     >
-      {renderInput(question, value, onChange, readOnly, issue?.message)}
+      {renderInput(question, value, onChange, readOnly, issue?.message, locale)}
     </QuestionCard>
   );
 }
@@ -110,7 +118,8 @@ function renderInput(
   value: SurveyAnswerValue,
   onChange: (v: SurveyAnswerValue) => void,
   readOnly: boolean,
-  error?: string
+  error?: string,
+  locale: 'fr' | 'en' = 'fr'
 ) {
   switch (question.type) {
     case 'short_text':
@@ -194,7 +203,10 @@ function renderInput(
         <ChoiceCard
           selectedValue={typeof value === 'string' ? value : null}
           onSelect={(v) => !readOnly && onChange(v)}
-          choices={options.map((opt) => ({ value: opt.stableKey, text: opt.label }))}
+          choices={options.map((opt) => ({
+            value: opt.stableKey,
+            text: resolveLocalized(opt.label, locale),
+          }))}
           error={error}
         />
       );
@@ -223,7 +235,9 @@ function renderInput(
                 }}
                 style={[styles.multiChip, on && styles.multiChipOn]}
               >
-                <Text style={[styles.multiText, on && styles.multiTextOn]}>{opt.label}</Text>
+                <Text style={[styles.multiText, on && styles.multiTextOn]}>
+                  {resolveLocalized(opt.label, locale)}
+                </Text>
               </Pressable>
             );
           })}

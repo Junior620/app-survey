@@ -4,12 +4,13 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   RefreshControl,
   ActivityIndicator,
   Pressable,
+  Alert,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import type { AppRole, SiteListItem } from '@appsurvey/shared';
 import { roleHasPermission } from '@appsurvey/shared';
 import {
@@ -18,19 +19,45 @@ import {
   EmptyState,
   SemanticIcon,
   PrimaryButton,
+  SecondaryButton,
+  ListSearchBar,
 } from '../../../src/components/common';
-import { SiteCard, DemoModeBanner } from '../../../src/components/agent';
-import { colors, radius, spacing, typography } from '../../../src/theme';
+import { SiteCard, DemoModeBanner, SyncStatusLine } from '../../../src/components/agent';
+import { colors, layout, spacing, typography } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
+import { useSyncStatusStore } from '../../../src/stores/useSyncStatusStore';
 import { useDemoModeStore } from '../../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
-import { ensureDemoSeed, listSitesForAccount } from '../../../src/data';
-import { getRemoteServiceState } from '../../../src/data/syncService';
+import { ensureDemoSeed, listSitesForAccount, requestAutoSync } from '../../../src/data';
+import { refreshUiCounts } from '../../../src/data/autoSync';
+import { pullRemoteChanges, resolveCooperativeId } from '../../../src/data/syncService';
+import { listRemediationCases } from '../../../src/clmrs';
+import { DEFAULT_COOPERATIVE_ID } from '../../../src/data/syncConstants';
 import { haptics } from '../../../src/utils/haptics';
 
+/** Avoid re-alerting the same returned cases every Sites focus. */
+const alertedReturnedCaseIds = new Set<string>();
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 export default function SitesListScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
-  const { user, profile, userRole, logout } = useAuthStore();
+  const { user, profile, userRole, logout, isOffline } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const hydrateDemo = useDemoModeStore((s) => s.hydrate);
   const hydrateSite = useSiteContext((s) => s.hydrate);
@@ -39,36 +66,114 @@ export default function SitesListScreen() {
   const accountId = user?.id || profile?.id || 'local-account';
   const role = (userRole || profile?.role || 'AGENT_TERRAIN') as AppRole;
   const canWriteSite = roleHasPermission(role, 'site.write') || demoEnabled;
+  const cooperativeId = resolveCooperativeId(profile?.cooperativeId);
 
   const [sites, setSites] = useState<SiteListItem[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [syncHint, setSyncHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const syncPhase = useSyncStatusStore((s) => s.phase);
+  const pendingCount = useSyncStatusStore((s) => s.pendingCount);
+  const syncErrorCount = useSyncStatusStore((s) => s.errorCount);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      await hydrateDemo();
-      await hydrateSite();
-      const demo = useDemoModeStore.getState().enabled;
-      if (demo) {
-        await ensureDemoSeed(accountId);
-      }
-      const list = await listSitesForAccount(accountId);
-      setSites(list);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Impossible de charger les sites');
-    } finally {
-      setLoading(false);
+  const syncLineState =
+    syncPhase === 'syncing'
+      ? 'syncing'
+      : isOffline
+        ? 'offline'
+        : syncErrorCount > 0
+          ? 'error'
+          : pendingCount > 0
+            ? 'pending'
+            : 'synced';
+
+  /** Offline-first: SQLite local d'abord, pull réseau en arrière-plan (jamais bloquant). */
+  const loadLocal = useCallback(async () => {
+    await hydrateDemo();
+    await hydrateSite();
+    const demo = useDemoModeStore.getState().enabled;
+    if (demo) {
+      await ensureDemoSeed(accountId);
     }
-  }, [accountId, hydrateDemo, hydrateSite]);
+    const list = await listSitesForAccount(accountId, { cooperativeId });
+    setSites(list);
+    setError(null);
+    return list;
+  }, [accountId, cooperativeId, hydrateDemo, hydrateSite]);
+
+  const pullInBackground = useCallback(async () => {
+    if (!user || useDemoModeStore.getState().enabled) return;
+    try {
+      requestAutoSync(accountId);
+      await withTimeout(pullRemoteChanges(accountId, cooperativeId), 8000);
+      if (cooperativeId !== DEFAULT_COOPERATIVE_ID) {
+        await withTimeout(pullRemoteChanges(accountId, DEFAULT_COOPERATIVE_ID), 8000);
+      }
+      const list = await listSitesForAccount(accountId, { cooperativeId });
+      setSites(list);
+      setSyncHint(null);
+    } catch {
+      setSyncHint(
+        isOffline ? t('sites.syncHintOffline') : t('sites.syncHintUnavailable')
+      );
+    }
+  }, [accountId, cooperativeId, isOffline, t, user]);
+
+  const load = useCallback(
+    async (opts?: { showSpinner?: boolean; backgroundPull?: boolean }) => {
+      const showSpinner = opts?.showSpinner !== false;
+      const backgroundPull = opts?.backgroundPull !== false;
+      if (showSpinner) setLoading(true);
+      setError(null);
+      try {
+        await loadLocal();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : t('sites.loadError'));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+      if (backgroundPull) {
+        void pullInBackground();
+      }
+    },
+    [loadLocal, pullInBackground, t]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      load();
-    }, [load])
+      void load({ showSpinner: true, backgroundPull: true });
+      void (async () => {
+        await refreshUiCounts(accountId);
+        if (demoEnabled || role !== 'AGENT_TERRAIN') return;
+        const returned = (await listRemediationCases(accountId, { openOnly: true })).filter(
+          (c) => c.status === 'RENVOYE_ENQUETEUR' && !alertedReturnedCaseIds.has(c.id)
+        );
+        if (returned.length === 0) return;
+        returned.forEach((c) => alertedReturnedCaseIds.add(c.id));
+        const first = returned[0];
+        Alert.alert(
+          t('sites.remediationReturnedTitle'),
+          t('sites.remediationReturnedBody', { count: returned.length }),
+          [
+            {
+              text: t('common.open'),
+              onPress: () =>
+                router.push(`/(protected)/s75-pourquoi-ce-signal?caseId=${first.id}` as never),
+            },
+            { text: t('common.later'), style: 'cancel' },
+          ]
+        );
+      })();
+    }, [load, accountId, demoEnabled, role, router, t])
   );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    void load({ showSpinner: false, backgroundPull: true });
+  };
 
   const filtered = sites.filter((s) => {
     if (!query.trim()) return true;
@@ -79,8 +184,6 @@ export default function SitesListScreen() {
       s.code.toLowerCase().includes(q)
     );
   });
-
-  const service = getRemoteServiceState(!!user);
 
   const openCreate = () => {
     haptics.selection();
@@ -93,11 +196,17 @@ export default function SitesListScreen() {
     router.replace('/(public)/s02-login' as never);
   };
 
+  const emptyDescription = canWriteSite
+    ? demoEnabled
+      ? t('sites.emptyDemo')
+      : t('sites.emptyLocalWrite')
+    : t('sites.emptyLocalRead');
+
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="Sites"
-        subtitle="Stations et implantations"
+        title={t('sites.title')}
+        subtitle={t('sites.subtitle')}
         showBack={false}
         rightActions={
           <View style={styles.headerActions}>
@@ -106,7 +215,7 @@ export default function SitesListScreen() {
                 onPress={openCreate}
                 style={styles.headerBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Créer un site"
+                accessibilityLabel={t('sites.createA11y')}
               >
                 <SemanticIcon name="add" size={24} color={colors.vert} />
               </Pressable>
@@ -115,9 +224,9 @@ export default function SitesListScreen() {
               onPress={handleLogout}
               style={styles.logoutBtn}
               accessibilityRole="button"
-              accessibilityLabel="Se déconnecter"
+              accessibilityLabel={t('common.logout')}
             >
-              <Text style={styles.logoutText}>Déconnexion</Text>
+              <Text style={styles.logoutText}>{t('common.logout')}</Text>
             </Pressable>
           </View>
         }
@@ -126,26 +235,25 @@ export default function SitesListScreen() {
       <View style={styles.body}>
         {demoEnabled ? <DemoModeBanner /> : null}
 
-        <View style={styles.serviceRow}>
-          <SemanticIcon name="cloudOffline" size={16} color={colors.texteSecondaire} />
-          <Text style={styles.serviceText}>{service.message}</Text>
-        </View>
+        <SyncStatusLine
+          state={syncLineState}
+          pendingCount={pendingCount}
+          onPress={() => router.push('/(protected)/(agent)/sync' as never)}
+          style={styles.syncLine}
+        />
 
-        <View style={styles.searchRow}>
-          <SemanticIcon name="search" size={18} color={colors.texteSecondaire} />
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Rechercher un site"
-            placeholderTextColor={colors.horsLigne}
-            accessibilityLabel="Rechercher un site"
-          />
-        </View>
+        {syncHint ? <Text style={styles.serviceText}>{syncHint}</Text> : null}
+
+        <ListSearchBar
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t('sites.searchPlaceholder')}
+          accessibilityLabel={t('sites.searchPlaceholder')}
+        />
 
         {canWriteSite ? (
           <PrimaryButton
-            title="Nouveau site"
+            title={t('sites.newSite')}
             icon="plus"
             onPress={openCreate}
             style={{ marginBottom: spacing.m }}
@@ -154,8 +262,6 @@ export default function SitesListScreen() {
 
         {loading ? (
           <ActivityIndicator color={colors.vert} style={{ marginTop: spacing.xl }} />
-        ) : error ? (
-          <Text style={styles.error}>{error}</Text>
         ) : (
           <FlatList
             data={filtered}
@@ -163,27 +269,31 @@ export default function SitesListScreen() {
             contentContainerStyle={styles.list}
             refreshControl={
               <RefreshControl
-                refreshing={false}
-                onRefresh={() => {
-                  setLoading(true);
-                  load();
-                }}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
                 tintColor={colors.vert}
+                colors={[colors.vert]}
               />
+            }
+            ListHeaderComponent={
+              error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.error}>{error}</Text>
+                  <SecondaryButton
+                    title={t('common.retry')}
+                    onPress={onRefresh}
+                    style={styles.retryBtn}
+                  />
+                </View>
+              ) : null
             }
             ListEmptyComponent={
               <EmptyState
                 semanticIcon="building"
-                title="Aucun site ne vous est encore attribué"
-                description={
-                  canWriteSite
-                    ? demoEnabled
-                      ? 'Créez une station pour démarrer (mode démonstration).'
-                      : 'Créez votre première station ou implantation, ou contactez votre responsable si vous attendez une affectation.'
-                    : 'Contactez votre responsable de site pour obtenir une affectation. Aucun site n’est disponible pour ce compte.'
-                }
-                actionTitle={canWriteSite ? 'Créer un site' : undefined}
-                onAction={canWriteSite ? openCreate : undefined}
+                title={t('sites.emptyTitle')}
+                description={emptyDescription}
+                actionTitle={canWriteSite ? t('sites.createA11y') : t('common.retry')}
+                onAction={canWriteSite ? openCreate : onRefresh}
               />
             }
             renderItem={({ item }) => (
@@ -207,14 +317,9 @@ export default function SitesListScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: {
-    flex: 1,
-    paddingHorizontal: spacing.m,
-    paddingTop: spacing.s,
-  },
   headerBtn: {
-    minWidth: 48,
-    minHeight: 48,
+    width: layout.controlHeight,
+    height: layout.controlHeight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -226,49 +331,40 @@ const styles = StyleSheet.create({
   logoutBtn: {
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xxs,
-    minHeight: 48,
+    minHeight: layout.controlHeight,
     justifyContent: 'center',
   },
   logoutText: {
     ...typography.presets.labelMedium,
     color: colors.erreur,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  serviceRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-    marginBottom: spacing.s,
+  body: {
+    flex: 1,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.m,
   },
   serviceText: {
-    ...typography.presets.labelSmall,
+    ...typography.presets.meta,
     color: colors.texteSecondaire,
-    flex: 1,
+    marginBottom: spacing.s,
   },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.blanc,
-    borderWidth: 1,
-    borderColor: colors.bordure,
-    borderRadius: radius.m,
-    paddingHorizontal: spacing.s,
-    minHeight: 48,
+  syncLine: {
     marginBottom: spacing.m,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.presets.bodyMedium,
-    color: colors.texte,
-    paddingVertical: spacing.s,
   },
   list: {
     paddingBottom: spacing.xxl,
+    flexGrow: 1,
+  },
+  errorBox: {
+    marginBottom: spacing.m,
   },
   error: {
     ...typography.presets.bodyMedium,
     color: colors.erreur,
-    marginTop: spacing.m,
+    marginBottom: spacing.s,
+  },
+  retryBtn: {
+    alignSelf: 'flex-start',
   },
 });

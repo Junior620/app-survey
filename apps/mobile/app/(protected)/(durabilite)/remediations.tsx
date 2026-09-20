@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -53,7 +53,7 @@ export default function DurabiliteRemediationsScreen() {
 
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
-      <AppHeader title="PLANS DE REMÉDIATION" subtitle="Workflow A_VALIDER → CLOTURE" showBack={false} />
+      <AppHeader title="Plans de remédiation" subtitle="Du dossier à valider jusqu'à la clôture" showBack={false} />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {isOffline && (
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  id: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '800' },
+  id: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
   title: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: 4 },
   meta: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: spacing.s },
   openBtn: { alignSelf: 'flex-start' },

@@ -21,6 +21,10 @@ export const iconMap = {
   success: 'check-circle-outline',
   check: 'check',
   cancel: 'cancel',
+  more: 'dots-vertical',
+  expand: 'chevron-down',
+  language: 'translate',
+  globe: 'earth',
 
   // Actions
   add: 'plus',

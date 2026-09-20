@@ -10,7 +10,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, layout } from '../../theme';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 export interface AppScreenProps {
@@ -30,7 +30,7 @@ export const AppScreen: React.FC<AppScreenProps> = ({
   scrollable = false,
   style,
   contentContainerStyle,
-  padding = 16,
+  padding = layout.screenPadding,
   keyboardAvoiding = true,
   backgroundColor = colors.fond,
   testID,

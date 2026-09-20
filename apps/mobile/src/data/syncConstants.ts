@@ -21,16 +21,17 @@ export const MIRROR_TABLE_BY_ENTITY: Record<string, string> = {
 };
 
 export const PULL_MIRROR_TABLES = [
+  // FK order: parents before children (local SQLite enforces REFERENCES)
   'sites',
-  'planteurs',
-  'survey_responses_remote',
-  'secteurs',
   'villages',
+  'secteurs',
+  'planteurs',
   'parcelles',
   'formations',
   'seances',
   'participations',
   'missions',
+  'survey_responses_remote',
   'questionnaires_remote',
   'questionnaire_versions_remote',
   'questionnaire_assignments_remote',

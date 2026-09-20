@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -109,7 +109,7 @@ export default function S26PersonnesScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="PERSONNES & ENFANTS"
+        title="Personnes et enfants"
         subtitle="Liste Unique du Ménage & Estimation d'Âge"
         onBack={() => router.back()}
       />
@@ -118,7 +118,7 @@ export default function S26PersonnesScreen() {
         {/* Sensitive Content Notice */}
         <SensitiveContentNotice
           type="child"
-          title="PROTECTION DES DONNÉES DU MÉNAGE ET DES ENFANTS"
+          title="Protection des données"
           message="Enregistrement individuel des enfants et membres du ménage. Les estimations d'âge doivent être sincères."
         />
 
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   summaryCount: {
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   personCard: {
     backgroundColor: colors.blanc,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   personName: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   personRelation: {
     ...typography.presets.bodySmall,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   ageValue: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 2,
   },
   ageDivider: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -52,7 +52,7 @@ export default function S73ObservationScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="OBSERVATION TERRAIN"
+        title="Observation terrain"
         subtitle="Faits datés & Rapprochement de visu"
         onBack={() => router.back()}
       />
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.s,
   },
   protocolBoxActive: {
-    backgroundColor: '#FADBD8',
+    backgroundColor: colors.errorContainer,
     borderColor: colors.erreur,
   },
   protocolHeader: {
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   },
   protocolTitleActive: {
     color: colors.erreur,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   protocolDetails: {
     marginTop: spacing.m,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   protocolDirectiveTitle: {
     ...typography.presets.labelLarge,
     color: colors.erreur,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.xs,
   },
   protocolStep: {

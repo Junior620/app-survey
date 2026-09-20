@@ -28,6 +28,7 @@ import {
   getSiteDependencies,
   updateSite,
 } from '../../src/data';
+import { resolveCooperativeId } from '../../src/data/syncService';
 import { haptics } from '../../src/utils/haptics';
 
 export default function SiteFormScreen() {
@@ -40,6 +41,7 @@ export default function SiteFormScreen() {
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
   const setCurrentSiteId = useSiteContext((s) => s.setCurrentSiteId);
   const accountId = user?.id || profile?.id || 'local-account';
+  const cooperativeId = resolveCooperativeId(profile?.cooperativeId);
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -90,16 +92,18 @@ export default function SiteFormScreen() {
     setSaving(true);
     try {
       if (isEdit && siteId) {
-        await updateSite(accountId, siteId, { code, name, locality });
+        await updateSite(accountId, siteId, { code, name, locality, cooperativeId });
         haptics.notificationSuccess();
-        Alert.alert('Enregistré', 'Modifications en file de synchronisation.', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        Alert.alert(
+          'Enregistré',
+          'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
       } else {
-        const site = await createSite(accountId, { code, name, locality });
+        const site = await createSite(accountId, { code, name, locality, cooperativeId });
         await setCurrentSiteId(site.id);
         haptics.notificationSuccess();
-        Alert.alert('Site créé', 'Enregistré. En file de synchronisation jusqu’à l’envoi.', [
+        Alert.alert('Site créé', 'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.', [
           {
             text: 'Ouvrir',
             onPress: () =>
@@ -148,7 +152,7 @@ export default function SiteFormScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond} keyboardAvoiding>
       <AppHeader
         title={isEdit ? 'Modifier le site' : 'Nouveau site'}
-        subtitle={isEdit ? 'Modification' : 'Nouveau site'}
+        subtitle={isEdit ? 'Les champs marqués * sont obligatoires' : 'Création d’une station'}
         onBack={() => router.back()}
       />
       <KeyboardAwareScrollView

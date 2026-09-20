@@ -32,7 +32,14 @@ import {
   renameSection,
 } from '../../../../../src/data';
 import type { QuestionType, QuestionnaireDefinitionSnapshot } from '@appsurvey/shared';
-import { QUESTION_TYPE_LABELS } from '@appsurvey/shared';
+import {
+  QUESTION_TYPE_LABELS,
+  resolveLocalized,
+  collectSnapshotLocalizedFields,
+  measureQuestionnaireTranslationCompleteness,
+} from '@appsurvey/shared';
+import { useLocaleStore } from '../../../../../src/stores/useLocaleStore';
+import { useTranslation } from 'react-i18next';
 
 const ADDABLE_TYPES: QuestionType[] = [
   'short_text',
@@ -49,11 +56,13 @@ const ADDABLE_TYPES: QuestionType[] = [
 ];
 
 export default function QuestionnaireEditScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile, userRole } = useAuthStore();
   const accountId = user?.id || profile?.id || 'local-account';
   const actorId = user?.id || profile?.id || null;
+  const locale = useLocaleStore((s) => s.displayLocale);
 
   const [definition, setDefinition] = useState<QuestionnaireDefinitionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,6 +127,19 @@ export default function QuestionnaireEditScreen() {
         <ErrorState title="Erreur" message={error || 'Introuvable'} />
       ) : (
         <KeyboardAwareScrollView contentContainerStyle={styles.container}>
+          {(() => {
+            const stats = measureQuestionnaireTranslationCompleteness(
+              collectSnapshotLocalizedFields(definition)
+            );
+            return (
+              <View style={styles.i18nBanner}>
+                <Text style={styles.i18nFr}>{t('surveys.frComplete')}</Text>
+                <Text style={styles.i18nEn}>
+                  {t('surveys.enProgress', { done: stats.withEn, total: stats.total })}
+                </Text>
+              </View>
+            );
+          })()}
           {addTypeForSection ? (
             <View style={styles.typePicker}>
               <Text style={styles.sectionTitle}>Choisir un type</Text>
@@ -177,7 +199,9 @@ export default function QuestionnaireEditScreen() {
                       </View>
                     </View>
                   ) : (
-                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                    <Text style={styles.sectionTitle}>
+                      {resolveLocalized(section.title, locale)}
+                    </Text>
                   )}
                   <View style={styles.row}>
                     <Pressable
@@ -199,7 +223,7 @@ export default function QuestionnaireEditScreen() {
                     <Pressable
                       onPress={() => {
                         setRenamingId(section.id);
-                        setRenameValue(section.title);
+                        setRenameValue(resolveLocalized(section.title, 'fr'));
                       }}
                     >
                       <Text style={styles.link}>Renommer</Text>
@@ -233,7 +257,7 @@ export default function QuestionnaireEditScreen() {
                       }
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.qLabel}>{q.label}</Text>
+                        <Text style={styles.qLabel}>{resolveLocalized(q.label, locale)}</Text>
                         <Text style={styles.qMeta}>
                           {QUESTION_TYPE_LABELS[q.type]}
                           {q.required ? ' · obligatoire' : ''}
@@ -299,6 +323,24 @@ export default function QuestionnaireEditScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.m, paddingBottom: spacing.xxl },
+  i18nBanner: {
+    backgroundColor: colors.vertClair,
+    borderRadius: radius.m,
+    padding: spacing.m,
+    marginBottom: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.bordure,
+  },
+  i18nFr: {
+    ...typography.presets.labelLarge,
+    color: colors.vertFonce,
+    fontWeight: '700',
+  },
+  i18nEn: {
+    ...typography.presets.bodySmall,
+    color: colors.texteSecondaire,
+    marginTop: 4,
+  },
   headerLink: { ...typography.presets.labelMedium, color: colors.vert, fontWeight: '700' },
   section: {
     backgroundColor: colors.blanc,
@@ -313,7 +355,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 4,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Icon } from 'react-native-paper';
 import { colors, radius, spacing, typography } from '../../theme';
 import { haptics } from '../../utils/haptics';
@@ -11,6 +12,7 @@ export interface AgentProfileSheetProps {
   sectorName: string;
   initials: string;
   onLogout: () => void;
+  onSettings?: () => void;
 }
 
 export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
@@ -20,7 +22,10 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
   sectorName,
   initials,
   onLogout,
+  onSettings,
 }) => {
+  const { t } = useTranslation();
+
   const handleLogout = () => {
     haptics.impactMedium();
     onClose();
@@ -35,7 +40,11 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Fermer">
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+        accessibilityLabel={t('common.close')}
+      >
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
 
@@ -45,7 +54,9 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
             </View>
             <View style={styles.profileText}>
               <Text style={styles.name}>{agentName}</Text>
-              <Text style={styles.sector}>Secteur de {sectorName}</Text>
+              <Text style={styles.sector}>
+                {t('farmers.sector')} · {sectorName}
+              </Text>
             </View>
           </View>
 
@@ -56,13 +67,14 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
             onPress={() => {
               haptics.selection();
               onClose();
+              onSettings?.();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Paramètres"
+            accessibilityLabel={t('common.settings')}
             activeOpacity={0.7}
           >
             <Icon source="cog-outline" size={22} color={colors.texte} />
-            <Text style={styles.menuLabel}>Paramètres</Text>
+            <Text style={styles.menuLabel}>{t('common.settings')}</Text>
             <Icon source="chevron-right" size={20} color={colors.texteSecondaire} />
           </TouchableOpacity>
 
@@ -70,11 +82,11 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
             style={[styles.menuItem, styles.logoutItem]}
             onPress={handleLogout}
             accessibilityRole="button"
-            accessibilityLabel="Déconnexion"
+            accessibilityLabel={t('common.logout')}
             activeOpacity={0.7}
           >
             <Icon source="logout" size={22} color={colors.erreur} />
-            <Text style={styles.logoutLabel}>Déconnexion</Text>
+            <Text style={styles.logoutLabel}>{t('common.logout')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

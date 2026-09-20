@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -48,7 +48,7 @@ export default function S72MouvementsScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="MOUVEMENTS & EXPÉDITIONS"
+        title="Mouvements et expéditions"
         subtitle="Suivi des Transferts & Bordereaux de Route"
         onBack={() => router.back()}
       />

@@ -2,6 +2,7 @@ export * from './db';
 export * from './demoMode';
 export * from './migrations';
 export * from './syncService';
+export * from './autoSync';
 export * from './encryptionNotes';
 export * from './adminDashboard';
 export * from './adminUsers';

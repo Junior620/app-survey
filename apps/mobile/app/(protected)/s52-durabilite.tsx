@@ -1,9 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Card, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { afrexiaColors } from '@appsurvey/shared';
+import { colors } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
+import { formatRoleLabel } from '../../src/utils/roleLabels';
 
 export default function S52DurabiliteScreen() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function S52DurabiliteScreen() {
           <Text style={styles.welcomeText}>{profile?.fullName}</Text>
         </View>
         <Chip style={styles.roleChip} textStyle={styles.roleChipText}>
-          {userRole}
+          {formatRoleLabel(userRole)}
         </Chip>
       </View>
 
@@ -38,7 +39,7 @@ export default function S52DurabiliteScreen() {
             style={styles.actionButton}
             contentStyle={styles.actionButtonContent}
             labelStyle={styles.actionButtonLabel}
-            buttonColor={afrexiaColors.primary}
+            buttonColor={colors.vert}
             onPress={() => {}}
           >
             Consulter les Alertes & Signaux (Section I)
@@ -49,7 +50,7 @@ export default function S52DurabiliteScreen() {
       <Button
         mode="text"
         onPress={handleLogout}
-        textColor={afrexiaColors.error}
+        textColor={colors.erreur}
         style={styles.logoutButton}
       >
         Se déconnecter
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 48,
     paddingBottom: 32,
-    backgroundColor: afrexiaColors.background,
+    backgroundColor: colors.fond,
   },
   topBar: {
     flexDirection: 'row',
@@ -73,25 +74,25 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     fontSize: 12,
-    fontWeight: '800',
-    color: afrexiaColors.primary,
+    fontWeight: '700',
+    color: colors.vert,
     letterSpacing: 1,
   },
   welcomeText: {
     fontSize: 18,
-    fontWeight: '800',
-    color: afrexiaColors.onSurface,
+    fontWeight: '700',
+    color: colors.texte,
   },
   roleChip: {
-    backgroundColor: afrexiaColors.secondaryContainer,
+    backgroundColor: colors.brunClair,
   },
   roleChipText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: afrexiaColors.secondary,
+    fontWeight: '700',
+    color: colors.brun,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.blanc,
     borderRadius: 20,
     elevation: 3,
   },
@@ -100,13 +101,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: afrexiaColors.primary,
+    fontWeight: '700',
+    color: colors.vert,
     marginBottom: 6,
   },
   cardDesc: {
     fontSize: 13,
-    color: afrexiaColors.onSurfaceVariant,
+    color: colors.texteSecondaire,
     lineHeight: 18,
     marginBottom: 16,
   },
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
   actionButtonLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.blanc,
   },
   logoutButton: {
     marginTop: 24,

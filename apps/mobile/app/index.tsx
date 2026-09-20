@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+﻿import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   appTitle: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 1,
     marginTop: spacing.l,
     textAlign: 'center',

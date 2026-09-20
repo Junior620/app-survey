@@ -7,10 +7,11 @@ import {
   ViewStyle,
   TextStyle,
   StyleProp,
+  View,
 } from 'react-native';
-import { IconButton } from 'react-native-paper';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, radius, spacing, typography, layout } from '../../theme';
 import { haptics } from '../../utils/haptics';
+import { SemanticIcon, type SemanticIconName } from './icons';
 
 export interface PrimaryButtonProps {
   title: string;
@@ -18,6 +19,7 @@ export interface PrimaryButtonProps {
   loading?: boolean;
   disabled?: boolean;
   icon?: string;
+  semanticIcon?: SemanticIconName;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
@@ -30,6 +32,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   loading = false,
   disabled = false,
   icon,
+  semanticIcon,
   style,
   textStyle,
   accessibilityLabel,
@@ -44,14 +47,10 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        isInteractionDisabled && styles.disabledButton,
-        style,
-      ]}
+      style={[styles.button, isInteractionDisabled && styles.disabledButton, style]}
       onPress={handlePress}
       disabled={isInteractionDisabled}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
       accessibilityState={{ disabled: isInteractionDisabled, busy: loading }}
@@ -60,25 +59,17 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={colors.blanc} size="small" />
       ) : (
-        <>
-          {icon && (
-            <IconButton
-              icon={icon}
-              iconColor={colors.blanc}
-              size={20}
-              style={styles.icon}
-            />
-          )}
+        <View style={styles.row}>
+          {semanticIcon ? (
+            <SemanticIcon name={semanticIcon} size={layout.iconSizeSm} color={colors.blanc} />
+          ) : null}
           <Text
-            style={[
-              styles.text,
-              isInteractionDisabled && styles.disabledText,
-              textStyle,
-            ]}
+            style={[styles.text, isInteractionDisabled && styles.disabledText, textStyle]}
+            numberOfLines={1}
           >
             {title}
           </Text>
-        </>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -86,30 +77,29 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
-    height: 52,
+    minHeight: layout.controlHeight,
     alignSelf: 'stretch',
     backgroundColor: colors.vert,
-    borderRadius: radius.l,
+    borderRadius: radius.m,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.l,
+    paddingHorizontal: spacing.m,
   },
   disabledButton: {
-    backgroundColor: colors.bordure,
+    backgroundColor: colors.disabled,
   },
-  icon: {
-    margin: 0,
-    marginRight: spacing.xs,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   text: {
     ...typography.presets.titleMedium,
     color: colors.blanc,
-    fontWeight: '600',
     textAlign: 'center',
   },
   disabledText: {
-    color: colors.texteSecondaire,
+    color: colors.onDisabled,
   },
 });

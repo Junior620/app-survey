@@ -29,7 +29,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     await runMigrations(db);
     try {
       const { ensureClmrsSeeds } = await import('../clmrs/persistence/rulePacksRepository');
-      await ensureClmrsSeeds();
+      await ensureClmrsSeeds(db);
     } catch {
       /* seed best-effort — tables may be mid-migrate */
     }

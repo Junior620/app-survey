@@ -19,8 +19,14 @@ import {
   publishQuestionnaire,
 } from '../../../../../src/data';
 import { validateDefinitionForPublish } from '../../../../../src/survey/surveyEngine';
+import {
+  collectSnapshotLocalizedFields,
+  measureQuestionnaireTranslationCompleteness,
+} from '@appsurvey/shared';
+import { useTranslation } from 'react-i18next';
 
 export default function QuestionnairePublishScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile, userRole } = useAuthStore();
@@ -28,6 +34,7 @@ export default function QuestionnairePublishScreen() {
   const actorId = user?.id || profile?.id || null;
 
   const [issues, setIssues] = useState<string[]>([]);
+  const [enWarning, setEnWarning] = useState<string | null>(null);
   const [assignmentCount, setAssignmentCount] = useState(0);
   const [versionHint, setVersionHint] = useState('');
   const [loading, setLoading] = useState(true);
@@ -61,19 +68,28 @@ export default function QuestionnairePublishScreen() {
             ? ['Aucun brouillon. Utilisez « Créer une nouvelle version » pour modifier.']
             : ['Aucun brouillon à publier.']
         );
+        setEnWarning(null);
       } else {
         const found = validateDefinitionForPublish(def).map((i) => i.message);
         if (!active.length) {
           found.push('Diffusez vers au moins un site avant publication.');
         }
         setIssues(found);
+        const stats = measureQuestionnaireTranslationCompleteness(
+          collectSnapshotLocalizedFields(def)
+        );
+        setEnWarning(
+          stats.total > 0 && stats.withEn < stats.total
+            ? t('surveys.enIncompleteWarn', { done: stats.withEn, total: stats.total })
+            : null
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur');
     } finally {
       setLoading(false);
     }
-  }, [accountId, allowed, id]);
+  }, [accountId, allowed, id, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -116,6 +132,13 @@ export default function QuestionnairePublishScreen() {
           ) : (
             <Text style={styles.ok}>Prêt à publier.</Text>
           )}
+
+          {enWarning ? (
+            <View style={styles.warn}>
+              <Text style={styles.warnTitle}>{t('surveys.enIncompleteTitle')}</Text>
+              <Text style={styles.warnBody}>{enWarning}</Text>
+            </View>
+          ) : null}
 
           <PrimaryButton
             title="Publier maintenant"
@@ -178,10 +201,25 @@ const styles = StyleSheet.create({
   issuesTitle: {
     ...typography.presets.titleMedium,
     color: colors.erreur,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.s,
   },
   issue: { ...typography.presets.bodySmall, color: colors.texte, marginBottom: 4 },
+  warn: {
+    backgroundColor: colors.blanc,
+    borderRadius: radius.m,
+    padding: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.attention,
+    marginBottom: spacing.m,
+  },
+  warnTitle: {
+    ...typography.presets.titleMedium,
+    color: colors.texte,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  warnBody: { ...typography.presets.bodySmall, color: colors.horsLigne },
   ok: {
     ...typography.presets.bodyMedium,
     color: colors.vert,

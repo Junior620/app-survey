@@ -1,6 +1,7 @@
 import type { Site, SiteListItem } from '@appsurvey/shared';
 import { getDatabase, newId, nowIso } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
+import { DEFAULT_COOPERATIVE_ID } from '../syncConstants';
 
 type SiteRow = {
   id: string;
@@ -30,26 +31,36 @@ function mapSite(r: SiteRow): Site {
   };
 }
 
-export async function listSitesForAccount(accountId: string): Promise<SiteListItem[]> {
+export async function listSitesForAccount(
+  accountId: string,
+  _opts?: { cooperativeId?: string | null }
+): Promise<SiteListItem[]> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<SiteRow & {
-    planteur_count: number;
-    formations_active: number;
-    missions_pending: number;
-    outbox_pending: number;
-  }>(
+
+  // Shared visibility: every agent sees all active sites locally (no affectation).
+  // Org scoping is enforced at sync pull time via cooperative_id.
+  const rows = await db.getAllAsync<
+    SiteRow & {
+      planteur_count: number;
+      formations_active: number;
+      missions_pending: number;
+      outbox_pending: number;
+    }
+  >(
     `SELECT s.*,
-      (SELECT COUNT(*) FROM planteurs p WHERE p.site_id = s.id AND p.account_id = s.account_id AND p.status = 'active') AS planteur_count,
-      (SELECT COUNT(*) FROM formations f WHERE f.site_id = s.id AND f.account_id = s.account_id AND f.status IN ('planned','in_progress')) AS formations_active,
-      (SELECT COUNT(*) FROM missions m WHERE m.site_id = s.id AND m.account_id = s.account_id AND m.status = 'todo') AS missions_pending,
-      (SELECT COUNT(*) FROM sync_outbox o WHERE o.account_id = s.account_id AND o.transfer_status = 'pending'
-        AND o.entity_id IN (SELECT id FROM sites WHERE id = s.id
+      (SELECT COUNT(*) FROM planteurs p WHERE p.site_id = s.id AND p.status = 'active') AS planteur_count,
+      (SELECT COUNT(*) FROM formations f WHERE f.site_id = s.id AND f.status IN ('planned','in_progress')) AS formations_active,
+      (SELECT COUNT(*) FROM missions m WHERE m.site_id = s.id AND m.status = 'todo') AS missions_pending,
+      (SELECT COUNT(*) FROM sync_outbox o WHERE o.account_id = ? AND o.transfer_status = 'pending'
+        AND o.entity_id IN (
+          SELECT id FROM sites WHERE id = s.id
           UNION SELECT id FROM planteurs WHERE site_id = s.id
           UNION SELECT id FROM formations WHERE site_id = s.id
-          UNION SELECT id FROM missions WHERE site_id = s.id)
+          UNION SELECT id FROM missions WHERE site_id = s.id
+        )
       ) AS outbox_pending
      FROM sites s
-     WHERE s.account_id = ? AND s.status = 'active'
+     WHERE s.status = 'active'
      ORDER BY s.name COLLATE NOCASE`,
     [accountId]
   );
@@ -65,11 +76,15 @@ export async function listSitesForAccount(accountId: string): Promise<SiteListIt
 
 export async function getSiteById(accountId: string, siteId: string): Promise<Site | null> {
   const db = await getDatabase();
+  // Read by site id — shared across agents of the organisation
   const row = await db.getFirstAsync<SiteRow>(
-    `SELECT * FROM sites WHERE id = ? AND account_id = ?`,
-    [siteId, accountId]
+    `SELECT * FROM sites WHERE id = ? AND status != 'deleted'`,
+    [siteId]
   );
-  return row ? mapSite(row) : null;
+  if (!row) return null;
+  // Prefer exact account match when present, otherwise allow shared read
+  if (row.account_id !== accountId && row.status === 'archived') return null;
+  return mapSite(row);
 }
 
 export async function createSite(
@@ -85,7 +100,7 @@ export async function createSite(
     code: input.code.trim(),
     name: input.name.trim(),
     locality: input.locality.trim(),
-    cooperativeId: input.cooperativeId ?? null,
+    cooperativeId: input.cooperativeId?.trim() || DEFAULT_COOPERATIVE_ID,
     status: 'active',
     createdAt: ts,
     updatedAt: ts,

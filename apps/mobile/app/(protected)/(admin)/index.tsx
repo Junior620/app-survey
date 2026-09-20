@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+﻿import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { AppRole, QuestionnaireListItem, QuestionnaireStatus } from '@appsurvey/shared';
-import { roleHasPermission } from '@appsurvey/shared';
+import { resolveLocalized, roleHasPermission } from '@appsurvey/shared';
 import {
   AppScreen,
   AppHeader,
@@ -32,6 +34,7 @@ import {
 import { colors, spacing, typography, shadows } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
+import { useLocaleStore } from '../../../src/stores/useLocaleStore';
 import { loadAdminDashboard, type AdminDashboardData } from '../../../src/data/adminDashboard';
 import { getRemoteServiceState } from '../../../src/data/syncService';
 import { formatFirstName, formatRoleLabel } from '../../../src/utils/roleLabels';
@@ -50,47 +53,58 @@ function kpiToStat(kpi: { value: number } | { unavailable: true } | null | undef
   return { kind: 'number', value: kpi.value };
 }
 
-function questionnaireChip(status: QuestionnaireStatus): { chip: string; label: string } {
+function questionnaireChip(
+  status: QuestionnaireStatus,
+  t: TFunction
+): { chip: string; label: string } {
   switch (status) {
     case 'published':
-      return { chip: 'valide', label: 'Publié' };
+      return { chip: 'valide', label: t('status.published') };
     case 'draft':
-      return { chip: 'brouillon', label: 'Brouillon' };
+      return { chip: 'brouillon', label: t('status.draft') };
     case 'suspended':
-      return { chip: 'incomplet', label: 'Suspendu' };
+      return { chip: 'incomplet', label: t('status.suspended') };
     case 'archived':
-      return { chip: 'brouillon', label: 'Archivé' };
+      return { chip: 'brouillon', label: t('status.archived') };
     default:
       return { chip: 'brouillon', label: status };
   }
 }
 
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, t: TFunction, locale: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const now = Date.now();
   const diff = now - d.getTime();
   const day = 24 * 60 * 60 * 1000;
-  if (diff < day) return "Aujourd'hui";
-  if (diff < 2 * day) return 'Hier';
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  if (diff < day) return t('admin.today');
+  if (diff < 2 * day) return t('admin.yesterday');
+  return d.toLocaleDateString(locale.startsWith('en') ? 'en-GB' : 'fr-FR', {
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
-function openQuestionnaireAction(q: QuestionnaireListItem): 'Modifier' | 'Consulter' {
-  if (q.status === 'draft' || q.hasDraft) return 'Modifier';
-  return 'Consulter';
+function openQuestionnaireAction(
+  q: QuestionnaireListItem,
+  t: TFunction
+): string {
+  if (q.status === 'draft' || q.hasDraft) return t('admin.editAction');
+  return t('admin.viewAction');
 }
 
 export default function AdminHomeScreen() {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { user, profile, userRole, logout } = useAuthStore();
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
   const setCurrentSiteId = useSiteContext((s) => s.setCurrentSiteId);
   const hydrateSite = useSiteContext((s) => s.hydrate);
+  const locale = useLocaleStore((s) => s.displayLocale);
 
   const accountId = user?.id || profile?.id || 'local-account';
   const role = (userRole || profile?.role || null) as AppRole | null;
-  const fullName = profile?.fullName?.trim() || user?.email || 'Administrateur';
+  const fullName = profile?.fullName?.trim() || user?.email || t('admin.administrator');
   const firstName = formatFirstName(fullName) || fullName;
   const initials = initialsFromName(fullName);
   const roleLabel = formatRoleLabel(role);
@@ -118,7 +132,7 @@ export default function AdminHomeScreen() {
           if (!cancelled) setData(dash);
         } catch (e: unknown) {
           if (!cancelled) {
-            setError(e instanceof Error ? e.message : 'Impossible de charger le tableau de bord');
+            setError(e instanceof Error ? e.message : t('admin.loadError'));
           }
         } finally {
           if (!cancelled) setLoading(false);
@@ -128,7 +142,7 @@ export default function AdminHomeScreen() {
       return () => {
         cancelled = true;
       };
-    }, [accountId, hydrateSite, role, router])
+    }, [accountId, hydrateSite, role, router, t])
   );
 
   const refreshWithSite = useCallback(
@@ -140,12 +154,12 @@ export default function AdminHomeScreen() {
         const dash = await loadAdminDashboard(accountId, siteId);
         setData(dash);
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Impossible de charger le tableau de bord');
+        setError(e instanceof Error ? e.message : t('admin.loadError'));
       } finally {
         setLoading(false);
       }
     },
-    [accountId, setCurrentSiteId]
+    [accountId, setCurrentSiteId, t]
   );
 
   const handleLogout = async () => {
@@ -156,21 +170,23 @@ export default function AdminHomeScreen() {
   const service = getRemoteServiceState(!!user);
   const serviceLabel =
     service.availability === 'available'
-      ? 'Serveur prêt'
+      ? t('admin.serverReady')
       : service.availability === 'not_configured'
-        ? 'Serveur non configuré'
-        : 'Sync limitée';
+        ? t('admin.serverNotConfigured')
+        : t('admin.syncLimited');
 
   const scopeSites = useMemo(
     () => (data?.sites ?? []).map((s) => ({ id: s.id, name: s.name })),
     [data?.sites]
   );
 
+  const editLabel = t('admin.editAction');
+
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="Administration"
-        subtitle={`Bonjour, ${firstName}`}
+        title={t('admin.title')}
+        subtitle={t('admin.hello', { name: firstName })}
         showBack={false}
         rightActions={
           <AdminAvatarButton initials={initials} onPress={() => setMenuOpen(true)} />
@@ -184,7 +200,7 @@ export default function AdminHomeScreen() {
         initials={initials}
         roleLabel={roleLabel}
         onProfile={() => router.push('/(protected)/(admin)/profile' as never)}
-        onSettings={() => router.push('/(protected)/(admin)/diagnostic' as never)}
+        onSettings={() => router.push('/(protected)/settings' as never)}
         onLogout={handleLogout}
       />
 
@@ -199,23 +215,23 @@ export default function AdminHomeScreen() {
 
         <View style={styles.actions}>
           <PrimaryButton
-            title="Créer un questionnaire"
+            title={t('admin.createQuestionnaire')}
             onPress={() => {
               haptics.selection();
               router.push('/(protected)/(admin)/questionnaires/new' as never);
             }}
-            accessibilityLabel="Créer un questionnaire"
+            accessibilityLabel={t('admin.createQuestionnaire')}
           />
           <View style={styles.secondaryCol}>
             <SecondaryButton
-              title="Ajouter un site"
+              title={t('admin.addSite')}
               onPress={() => {
                 haptics.selection();
                 router.push('/(protected)/site-form' as never);
               }}
             />
             <SecondaryButton
-              title="Ajouter un utilisateur"
+              title={t('admin.addUser')}
               onPress={() => {
                 haptics.selection();
                 router.push('/(protected)/(admin)/users/new' as never);
@@ -226,37 +242,37 @@ export default function AdminHomeScreen() {
 
         {error ? (
           <EmptyState
-            title="Chargement interrompu"
+            title={t('admin.loadInterrupted')}
             description={error}
-            actionTitle="Réessayer"
+            actionTitle={t('common.retry')}
             onAction={() => void refreshWithSite(currentSiteId)}
           />
         ) : (
           <>
-            <Text style={styles.sectionTitle}>Indicateurs</Text>
+            <Text style={styles.sectionTitle}>{t('admin.indicators')}</Text>
             <AdminStatGrid>
               <AdminStatTile
                 icon="building"
-                label="Sites actifs"
+                label={t('admin.sitesActive')}
                 value={kpiToStat(data?.sitesActive, loading)}
                 onPress={() => router.push('/(protected)/(agent)' as never)}
               />
               <AdminStatTile
                 icon="profile"
-                label="Agents terrain"
+                label={t('admin.agentsField')}
                 value={kpiToStat(data?.agentsActive, loading)}
                 onPress={() => router.push('/(protected)/(admin)/users' as never)}
               />
               <AdminStatTile
                 icon="questionnaire"
-                label="Questionnaires publiés"
+                label={t('admin.questionnairesPublished')}
                 value={kpiToStat(data?.questionnairesPublished, loading)}
                 onPress={() => router.push('/(protected)/(admin)/questionnaires' as never)}
               />
               {data?.outboxPending != null || loading ? (
                 <AdminStatTile
                   icon="pending"
-                  label="File de sync"
+                  label={t('admin.syncQueue')}
                   value={kpiToStat(data?.outboxPending ?? { value: 0 }, loading)}
                   onPress={() => router.push('/(protected)/s50-file-sync' as never)}
                 />
@@ -269,30 +285,30 @@ export default function AdminHomeScreen() {
 
             {data && data.todos.length > 0 ? (
               <View style={styles.sectionBlock}>
-                <Text style={styles.sectionTitle}>À traiter</Text>
+                <Text style={styles.sectionTitle}>{t('admin.todos')}</Text>
                 <View style={styles.todoCard}>
-                  {data.todos.map((t) => (
+                  {data.todos.map((todoItem) => (
                     <AdminTodoRow
-                      key={t.id}
-                      problem={t.problem}
-                      actionLabel={t.actionLabel}
-                      tone={t.tone}
+                      key={todoItem.id}
+                      problem={todoItem.problem}
+                      actionLabel={todoItem.actionLabel}
+                      tone={todoItem.tone}
                       icon={
-                        t.kind === 'outbox_error' || t.kind === 'outbox_pending'
+                        todoItem.kind === 'outbox_error' || todoItem.kind === 'outbox_pending'
                           ? 'sync'
-                          : t.kind === 'unpublished_assign'
+                          : todoItem.kind === 'unpublished_assign'
                             ? 'warning'
                             : 'document'
                       }
                       onPress={() => {
-                        if (t.questionnaireId) {
-                          if (t.kind === 'unpublished_assign') {
+                        if (todoItem.questionnaireId) {
+                          if (todoItem.kind === 'unpublished_assign') {
                             router.push(
-                              `/(protected)/(admin)/questionnaires/${t.questionnaireId}/assign` as never
+                              `/(protected)/(admin)/questionnaires/${todoItem.questionnaireId}/assign` as never
                             );
                           } else {
                             router.push(
-                              `/(protected)/(admin)/questionnaires/${t.questionnaireId}/edit` as never
+                              `/(protected)/(admin)/questionnaires/${todoItem.questionnaireId}/edit` as never
                             );
                           }
                         } else {
@@ -307,49 +323,49 @@ export default function AdminHomeScreen() {
 
             <View style={styles.sectionBlock}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitleInline}>Questionnaires récents</Text>
+                <Text style={styles.sectionTitleInline}>{t('admin.recentQuestionnaires')}</Text>
                 <Pressable
                   onPress={() => {
                     haptics.selection();
                     router.push('/(protected)/(admin)/questionnaires' as never);
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel="Voir tous les questionnaires"
+                  accessibilityLabel={t('admin.seeAllQuestionnairesA11y')}
                   hitSlop={8}
                 >
-                  <Text style={styles.link}>Voir tous</Text>
+                  <Text style={styles.link}>{t('admin.seeAll')}</Text>
                 </Pressable>
               </View>
               {!loading && (!data || data.recentQuestionnaires.length === 0) ? (
                 <EmptyState
-                  title="Aucun questionnaire"
-                  description="Créez le premier formulaire pour démarrer les collectes."
-                  actionTitle="Créer"
+                  title={t('admin.emptyQuestionnaires')}
+                  description={t('admin.emptyQuestionnairesDesc')}
+                  actionTitle={t('common.create')}
                   onAction={() =>
                     router.push('/(protected)/(admin)/questionnaires/new' as never)
                   }
                 />
               ) : (
                 data?.recentQuestionnaires.map((q) => {
-                  const chip = questionnaireChip(q.status);
-                  const action = openQuestionnaireAction(q);
+                  const chip = questionnaireChip(q.status, t);
+                  const action = openQuestionnaireAction(q, t);
                   return (
                     <AdminRecentQuestionnaireCard
                       key={q.id}
-                      title={q.title}
+                      title={resolveLocalized(q.title, locale)}
                       versionLabel={
                         q.publishedVersion
                           ? `v${q.publishedVersion}`
                           : q.hasDraft
-                            ? 'Brouillon'
+                            ? t('status.draft')
                             : '—'
                       }
                       chipStatus={chip.chip}
                       statusLabel={chip.label}
-                      updatedLabel={formatRelativeDate(q.updatedAt)}
+                      updatedLabel={formatRelativeDate(q.updatedAt, t, i18n.language)}
                       actionLabel={action}
                       onPress={() => {
-                        if (action === 'Modifier') {
+                        if (action === editLabel) {
                           router.push(
                             `/(protected)/(admin)/questionnaires/${q.id}/edit` as never
                           );
@@ -364,41 +380,41 @@ export default function AdminHomeScreen() {
             </View>
 
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Gestion</Text>
+              <Text style={styles.sectionTitle}>{t('admin.management')}</Text>
               <AdminModuleRow
                 icon="chart"
-                title="Rapports"
-                description="Indicateurs cloud et export CSV"
+                title={t('admin.reports')}
+                description={t('admin.reportsDesc')}
                 onPress={() => router.push('/(protected)/(admin)/rapports' as never)}
               />
               <AdminModuleRow
                 icon="questionnaire"
-                title="Questionnaires"
-                description="Créer, publier et assigner les formulaires"
+                title={t('admin.questionnaires')}
+                description={t('admin.questionnairesDesc')}
                 onPress={() => router.push('/(protected)/(admin)/questionnaires' as never)}
               />
               <AdminModuleRow
                 icon="profile"
-                title="Utilisateurs"
-                description="Comptes et rôles"
+                title={t('admin.users')}
+                description={t('admin.usersDesc')}
                 onPress={() => router.push('/(protected)/(admin)/users' as never)}
               />
               <AdminModuleRow
                 icon="building"
-                title="Sites et secteurs"
-                description="Implantations et découpage terrain"
+                title={t('admin.sitesSectors')}
+                description={t('admin.sitesSectorsDesc')}
                 onPress={() => router.push('/(protected)/(agent)' as never)}
               />
               <AdminModuleRow
                 icon="school"
-                title="Formations"
-                description="Sessions et présence"
+                title={t('admin.trainings')}
+                description={t('admin.trainingsDesc')}
                 onPress={() => router.push('/(protected)/formations' as never)}
               />
               <AdminModuleRow
                 icon="clipboard"
-                title="Missions"
-                description="Tâches assignées aux agents"
+                title={t('missions.title')}
+                description={t('admin.missionsDesc')}
                 onPress={() => router.push('/(protected)/mission-form' as never)}
               />
             </View>
@@ -410,11 +426,11 @@ export default function AdminHomeScreen() {
                 router.push('/(protected)/(admin)/diagnostic' as never);
               }}
               accessibilityRole="button"
-              accessibilityLabel={`État des services : ${serviceLabel}`}
+              accessibilityLabel={t('admin.servicesStatusA11y', { status: serviceLabel })}
             >
               <SemanticIcon name="cloud" size={20} color={colors.vert} />
               <View style={styles.servicesText}>
-                <Text style={styles.servicesTitle}>État des services</Text>
+                <Text style={styles.servicesTitle}>{t('admin.servicesStatus')}</Text>
                 <Text style={styles.servicesSub} numberOfLines={2}>
                   {serviceLabel}
                 </Text>
@@ -443,13 +459,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.xs,
   },
   sectionTitleInline: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
   },
   sectionBlock: {

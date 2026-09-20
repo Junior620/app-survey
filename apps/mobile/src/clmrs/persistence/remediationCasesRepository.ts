@@ -1,4 +1,5 @@
 import { getDatabase, newId, nowIso } from '../../data/db';
+import { enqueueOutboxInTx } from '../../data/repositories/outboxRepository';
 import {
   assertTransition,
   type RemediationCaseStatus,
@@ -145,6 +146,7 @@ export async function transitionRemediationCase(input: {
   assertTransition(current.status, input.toStatus);
 
   const ts = nowIso();
+  let nextRevision = current.revision + 1;
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `UPDATE remediation_cases
@@ -162,10 +164,83 @@ export async function transitionRemediationCase(input: {
       actorRole: input.actorRole,
       metadata: input.metadata ?? null,
     });
+    await enqueueOutboxInTx(
+      input.accountId,
+      'remediation_case',
+      input.caseId,
+      'update',
+      {
+        status: input.toStatus,
+        fromStatus: current.status,
+        reason: input.reason,
+        surveyResponseId: current.surveyResponseId,
+        enfantId: current.enfantId,
+        householdId: current.householdId,
+        primaryStatus: current.primaryStatus,
+        severity: current.severity,
+        protectionImmediate: current.protectionImmediate,
+        supervisorAckAt: current.supervisorAckAt,
+        actorId: input.actorId,
+        actorRole: input.actorRole,
+      },
+      nextRevision,
+      null,
+      `remediation_case:update:${input.caseId}:${nextRevision}:${input.toStatus}`
+    );
   });
 
   const updated = await getRemediationCase(input.accountId, input.caseId);
   if (!updated) throw new Error('Cas introuvable après transition');
+  return updated;
+}
+
+export async function acknowledgeSupervisor(
+  accountId: string,
+  caseId: string,
+  actorId: string | null,
+  actorRole: string | null
+): Promise<RemediationCaseRecord> {
+  const current = await getRemediationCase(accountId, caseId);
+  if (!current) throw new Error('Cas introuvable');
+  if (current.supervisorAckAt) return current;
+
+  const ts = nowIso();
+  const db = await getDatabase();
+  const nextRevision = current.revision + 1;
+  await db.withTransactionAsync(async () => {
+    await markSupervisorAckInTx(accountId, caseId, ts);
+    await db.runAsync(
+      `UPDATE remediation_cases SET revision = ? WHERE id = ? AND account_id = ?`,
+      [nextRevision, caseId, accountId]
+    );
+    await appendCaseEventInTx({
+      caseId,
+      accountId,
+      fromStatus: current.status,
+      toStatus: current.status,
+      reason: 'supervisor_ack',
+      actorId,
+      actorRole,
+      metadata: { ackAt: ts },
+    });
+    await enqueueOutboxInTx(
+      accountId,
+      'remediation_case',
+      caseId,
+      'update',
+      {
+        ...current,
+        supervisorAckAt: ts,
+        event: 'supervisor_ack',
+      },
+      nextRevision,
+      null,
+      `remediation_case:ack:${caseId}:${nextRevision}`
+    );
+  });
+
+  const updated = await getRemediationCase(accountId, caseId);
+  if (!updated) throw new Error('Cas introuvable après ack');
   return updated;
 }
 

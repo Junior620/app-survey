@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   section: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.s,
   },
   grid: {
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   kpiValue: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   kpiLabel: {
     ...typography.presets.labelMedium,

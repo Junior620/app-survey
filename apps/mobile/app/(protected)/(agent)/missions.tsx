@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, EmptyState, SemanticIcon } from '../../../src/components/common';
 import { DemoModeBanner } from '../../../src/components/agent';
 import { colors, radius, spacing, typography } from '../../../src/theme';
@@ -23,6 +24,7 @@ import {
 import { haptics } from '../../../src/utils/haptics';
 
 export default function MissionsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
@@ -62,11 +64,17 @@ export default function MissionsScreen() {
     }, [accountId, currentSiteId, demoEnabled, filter])
   );
 
+  const filters = [
+    ['todo', t('missions.filterTodo')],
+    ['done', t('missions.filterDone')],
+    ['all', t('missions.filterAll')],
+  ] as const;
+
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="Missions"
-        subtitle="À réaliser"
+        title={t('missions.title')}
+        subtitle={t('missions.subtitle')}
         showBack={false}
         rightActions={
           currentSiteId ? (
@@ -74,7 +82,7 @@ export default function MissionsScreen() {
               onPress={openCreate}
               style={styles.headerBtn}
               accessibilityRole="button"
-              accessibilityLabel="Nouvelle mission"
+              accessibilityLabel={t('missions.new')}
             >
               <SemanticIcon name="add" size={22} color={colors.vert} />
             </Pressable>
@@ -84,17 +92,11 @@ export default function MissionsScreen() {
       <View style={styles.body}>
         {demoEnabled ? <DemoModeBanner /> : null}
         {!currentSiteId ? (
-          <Text style={styles.hint}>Sélectionnez un site pour filtrer le contexte.</Text>
+          <Text style={styles.hint}>{t('missions.selectSiteHint')}</Text>
         ) : null}
 
         <View style={styles.filters}>
-          {(
-            [
-              ['todo', 'À faire'],
-              ['done', 'Terminées'],
-              ['all', 'Toutes'],
-            ] as const
-          ).map(([key, label]) => (
+          {filters.map(([key, label]) => (
             <Pressable
               key={key}
               onPress={() => setFilter(key)}
@@ -117,13 +119,13 @@ export default function MissionsScreen() {
             ListEmptyComponent={
               <EmptyState
                 semanticIcon="clipboard"
-                title="Aucune mission"
+                title={t('missions.emptyTitle')}
                 description={
                   currentSiteId
-                    ? 'Créez une mission pour ce site.'
-                    : 'Pas de mission en attente pour ce contexte.'
+                    ? t('missions.emptyDescription')
+                    : t('missions.emptyDescriptionNoSite')
                 }
-                actionTitle={currentSiteId ? 'Nouvelle mission' : undefined}
+                actionTitle={currentSiteId ? t('missions.new') : undefined}
                 onAction={currentSiteId ? openCreate : undefined}
               />
             }
@@ -142,7 +144,11 @@ export default function MissionsScreen() {
                 <View style={styles.cardText}>
                   <Text style={styles.title}>{item.objectLabel || item.type}</Text>
                   <Text style={styles.meta}>
-                    {item.type} · Priorité {item.priority} · {item.status}
+                    {t('missions.meta', {
+                      type: item.type,
+                      priority: item.priority,
+                      status: item.status,
+                    })}
                   </Text>
                 </View>
                 <SemanticIcon name="next" size={18} color={colors.texteSecondaire} />

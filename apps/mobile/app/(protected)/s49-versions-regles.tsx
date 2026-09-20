@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -45,7 +45,7 @@ export default function S49VersionsReglesScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="S49 - VERSIONS RÈGLES MÉTIER"
+        title="Versions des règles"
         subtitle="Packs PUBLISHED immuables (CLMRS)"
         onBack={() => router.back()}
       />
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   engineVersionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   engineMeta: { ...typography.presets.bodySmall, color: colors.horsLigne },
   statsRow: {
@@ -177,14 +177,14 @@ const styles = StyleSheet.create({
   statValue: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 2,
   },
   statDivider: { width: 1, height: '100%', backgroundColor: colors.bordure },
   catTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.xs,
   },
   ruleItem: {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   ruleCodeBadge: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     backgroundColor: colors.vertClair,
     paddingHorizontal: spacing.s,
     paddingVertical: 1,

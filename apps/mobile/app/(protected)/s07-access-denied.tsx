@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Card, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   roleValue: {
     ...typography.presets.titleMedium,
-    fontWeight: '800',
+    fontWeight: '700',
     color: colors.brun,
     marginTop: 2,
   },

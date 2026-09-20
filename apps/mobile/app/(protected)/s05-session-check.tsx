@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppScreen } from '../../src/components/common/AppScreen';
 import { AppLogo } from '../../src/components/common/AppLogo';
 import { PrimaryButton } from '../../src/components/common/PrimaryButton';
@@ -26,6 +27,7 @@ function destinationForRole(role: string | null | undefined): string {
 }
 
 export default function S05SessionCheckScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
   const userRole = useAuthStore((s) => s.userRole);
@@ -121,7 +123,7 @@ export default function S05SessionCheckScreen() {
     } catch {
       // timeout UI if still stuck
     }
-    setRetryToken((t) => t + 1);
+    setRetryToken((token) => token + 1);
   };
 
   const firstName = formatFirstName(profile?.fullName);
@@ -133,12 +135,13 @@ export default function S05SessionCheckScreen() {
       <AppScreen padding="m" backgroundColor={colors.fond}>
         <View style={styles.center}>
           <AppLogo size="md" markOnly />
-          <Text style={styles.title}>Préparation interrompue</Text>
-          <Text style={styles.subtitle}>
-            Le chargement de votre espace prend trop de temps. Vérifiez votre connexion ou
-            réessayez.
-          </Text>
-          <PrimaryButton title="Réessayer" onPress={onRetry} style={{ marginTop: spacing.l }} />
+          <Text style={styles.title}>{t('session.interrupted')}</Text>
+          <Text style={styles.subtitle}>{t('session.interruptedBody')}</Text>
+          <PrimaryButton
+            title={t('common.retry')}
+            onPress={onRetry}
+            style={{ marginTop: spacing.l }}
+          />
         </View>
       </AppScreen>
     );
@@ -146,20 +149,20 @@ export default function S05SessionCheckScreen() {
 
   const statusText =
     phase === 'open'
-      ? 'Ouverture de votre espace…'
+      ? t('session.opening')
       : phase === 'sites'
-        ? 'Récupération de vos sites…'
-        : 'Chargement de votre profil…';
+        ? t('session.loadingSites')
+        : t('session.loadingProfile');
 
   return (
     <AppScreen padding="m" backgroundColor={colors.fond}>
       <View style={styles.center}>
         <AppLogo size="lg" markOnly />
-        <Text style={styles.title}>Préparation de votre espace</Text>
+        <Text style={styles.title}>{t('session.preparing')}</Text>
 
         {phase === 'ready' && firstName ? (
           <View style={styles.greeting}>
-            <Text style={styles.hello}>Bonjour, {firstName}</Text>
+            <Text style={styles.hello}>{t('session.hello', { name: firstName })}</Text>
             <Text style={styles.meta}>
               {roleLabel}
               {zone ? ` · ${zone}` : ''}

@@ -11,7 +11,7 @@ export type AdminRecentQuestionnaireCardProps = {
   chipStatus: string;
   statusLabel: string;
   updatedLabel: string;
-  actionLabel: 'Modifier' | 'Consulter';
+  actionLabel: string;
   onPress: () => void;
 };
 

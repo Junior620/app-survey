@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   avatarText: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   text: { flex: 1 },
   name: {

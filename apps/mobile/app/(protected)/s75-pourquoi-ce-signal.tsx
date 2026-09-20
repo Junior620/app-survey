@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -102,7 +102,7 @@ export default function S75PourquoiCeSignalScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="POURQUOI CE SIGNAL ?"
+        title="Pourquoi ce signal ?"
         subtitle="Explicabilité factuelle déterministe"
         onBack={() => router.back()}
       />
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   guaranteeTitle: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 2,
   },
   guaranteeMessage: { ...typography.presets.bodySmall, color: colors.texte, lineHeight: 18 },
@@ -308,13 +308,13 @@ const styles = StyleSheet.create({
   axeBadge: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     backgroundColor: colors.vertClair,
     paddingHorizontal: spacing.s,
     paddingVertical: 2,
     borderRadius: radius.s,
   },
-  ruleCode: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '800' },
+  ruleCode: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
   ruleTitle: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: spacing.xs },
   metaText: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: 2 },
   metaWarn: { ...typography.presets.bodySmall, color: colors.brun, marginBottom: 2, fontWeight: '600' },
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.s,
     marginTop: spacing.s,
   },
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   ruleCodeBadge: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 2,
   },
   ruleName: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '700' },

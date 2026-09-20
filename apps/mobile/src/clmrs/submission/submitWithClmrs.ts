@@ -235,6 +235,28 @@ export async function submitSurveyWithClmrs(input: {
           );
         }
 
+        if (created) {
+          await enqueueOutboxInTx(
+            input.accountId,
+            'remediation_case',
+            caseId,
+            'create',
+            {
+              surveyResponseId: responseId,
+              enfantId,
+              householdId,
+              detectionRunId: runId,
+              primaryStatus: childResult.primaryStatus,
+              severity: childResult.severity,
+              status: 'A_VALIDER',
+              protectionImmediate: childResult.protectionImmediate,
+            },
+            1,
+            null,
+            `remediation_case:create:${caseId}`
+          );
+        }
+
         if (childResult.protectionImmediate || childResult.severity === 'CRITICAL') {
           criticalAlert = true;
           await enqueueOutboxInTx(

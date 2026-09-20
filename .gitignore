@@ -32,3 +32,9 @@ apps/mobile/android/
 apps/mobile/ios/
 *.jks
 *.keystore
+credentials.json
+apps/mobile/credentials/
+!apps/mobile/credentials/.gitkeep
+!apps/mobile/credentials.json.example
+*.apk
+*.aab

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -42,7 +42,7 @@ export default function S71PostRecolteScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="S71 - CHRONOLOGIE POST-RÉCOLTE"
+        title="Chronologie post-récolte"
         subtitle="Préparation Qualité & Suivi des Étapes"
         onBack={() => router.back()}
       />
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   lotCodeText: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   lotMetaText: {
     ...typography.presets.bodySmall,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   chronoBannerTitle: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.s,
     textAlign: 'center',
   },
@@ -248,13 +248,13 @@ const styles = StyleSheet.create({
   stepBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.blanc,
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 10,
   },
   stepArrow: {
     ...typography.presets.labelSmall,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   rowTwoCols: {
     flexDirection: 'row',

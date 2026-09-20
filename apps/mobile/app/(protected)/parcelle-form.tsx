@@ -105,7 +105,10 @@ export default function ParcelleFormScreen() {
           anneePlantation: parseAnnee(),
         });
         haptics.notificationSuccess();
-        Alert.alert('Enregistré', 'Modifications en file de synchronisation.', [
+        Alert.alert(
+          'Enregistré',
+          'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.',
+          [
           { text: 'OK', onPress: () => router.back() },
         ]);
       } else {

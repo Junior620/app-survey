@@ -8,6 +8,15 @@ import type {
   VisibilityRules,
   QuestionType,
 } from '@appsurvey/shared';
+import { coerceLocalized, resolveLocalized } from '@appsurvey/shared';
+
+function validationMessage(
+  custom: QuestionDefinition['validation']['customError'],
+  fallback: string
+): string {
+  if (!custom) return fallback;
+  return resolveLocalized(custom, 'fr') || fallback;
+}
 
 const SUPPORTED_QUESTION_TYPES: QuestionType[] = [
   'short_text',
@@ -160,7 +169,7 @@ export function validateQuestion(
     return {
       questionKey: question.stableKey,
       code: 'required',
-      message: question.validation.customError || 'Réponse obligatoire.',
+      message: validationMessage(question.validation.customError, 'Réponse obligatoire.'),
     };
   }
   if (empty) return null;
@@ -173,14 +182,14 @@ export function validateQuestion(
       return {
         questionKey: question.stableKey,
         code: 'min_length',
-        message: v.customError || `Minimum ${v.minLength} caractères.`,
+        message: validationMessage(v.customError, `Minimum ${v.minLength} caractères.`),
       };
     }
     if (v.maxLength != null && text.length > v.maxLength) {
       return {
         questionKey: question.stableKey,
         code: 'max_length',
-        message: v.customError || `Maximum ${v.maxLength} caractères.`,
+        message: validationMessage(v.customError, `Maximum ${v.maxLength} caractères.`),
       };
     }
   }
@@ -191,28 +200,28 @@ export function validateQuestion(
       return {
         questionKey: question.stableKey,
         code: 'not_number',
-        message: v.customError || 'Valeur numérique invalide.',
+        message: validationMessage(v.customError, 'Valeur numérique invalide.'),
       };
     }
     if (question.type === 'integer' && !Number.isInteger(n)) {
       return {
         questionKey: question.stableKey,
         code: 'not_integer',
-        message: v.customError || 'Entrez un nombre entier.',
+        message: validationMessage(v.customError, 'Entrez un nombre entier.'),
       };
     }
     if (v.min != null && n < v.min) {
       return {
         questionKey: question.stableKey,
         code: 'min',
-        message: v.customError || `Minimum ${v.min}.`,
+        message: validationMessage(v.customError, `Minimum ${v.min}.`),
       };
     }
     if (v.max != null && n > v.max) {
       return {
         questionKey: question.stableKey,
         code: 'max',
-        message: v.customError || `Maximum ${v.max}.`,
+        message: validationMessage(v.customError, `Maximum ${v.max}.`),
       };
     }
   }
@@ -222,14 +231,20 @@ export function validateQuestion(
       return {
         questionKey: question.stableKey,
         code: 'min_selections',
-        message: v.customError || `Sélectionnez au moins ${v.minSelections} option(s).`,
+        message: validationMessage(
+          v.customError,
+          `Sélectionnez au moins ${v.minSelections} option(s).`
+        ),
       };
     }
     if (v.maxSelections != null && value.length > v.maxSelections) {
       return {
         questionKey: question.stableKey,
         code: 'max_selections',
-        message: v.customError || `Sélectionnez au plus ${v.maxSelections} option(s).`,
+        message: validationMessage(
+          v.customError,
+          `Sélectionnez au plus ${v.maxSelections} option(s).`
+        ),
       };
     }
   }
@@ -255,7 +270,7 @@ export function validateDefinitionForPublish(
   definition: QuestionnaireDefinitionSnapshot
 ): PublishValidationIssue[] {
   const issues: PublishValidationIssue[] = [];
-  if (!definition.title.trim()) {
+  if (!coerceLocalized(definition.title).fr.trim()) {
     issues.push({ code: 'title', message: 'Le titre est obligatoire.' });
   }
   if (!definition.sections.length) {
@@ -263,7 +278,7 @@ export function validateDefinitionForPublish(
   }
   const keys = new Set<string>();
   for (const section of definition.sections) {
-    if (!section.title.trim()) {
+    if (!coerceLocalized(section.title).fr.trim()) {
       issues.push({
         sectionId: section.id,
         code: 'section_title',
@@ -275,11 +290,11 @@ export function validateDefinitionForPublish(
       issues.push({
         sectionId: section.id,
         code: 'empty_section',
-        message: `La section « ${section.title || 'Sans titre'} » n’a aucune question.`,
+        message: `La section « ${resolveLocalized(section.title, 'fr') || 'Sans titre'} » n’a aucune question.`,
       });
     }
     for (const q of section.questions) {
-      if (!q.label.trim() && q.type !== 'info') {
+      if (!coerceLocalized(q.label).fr.trim() && q.type !== 'info') {
         issues.push({
           questionKey: q.stableKey,
           code: 'question_label',
@@ -308,7 +323,7 @@ export function validateDefinitionForPublish(
         issues.push({
           questionKey: q.stableKey,
           code: 'options',
-          message: `« ${q.label || q.stableKey} » nécessite au moins 2 options.`,
+          message: `« ${resolveLocalized(q.label, 'fr') || q.stableKey} » nécessite au moins 2 options.`,
         });
       }
       if (q.visibility?.conditions?.length) {

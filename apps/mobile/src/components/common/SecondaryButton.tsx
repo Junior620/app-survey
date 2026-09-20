@@ -9,7 +9,7 @@ import {
   StyleProp,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, radius, spacing, typography, layout } from '../../theme';
 import { haptics } from '../../utils/haptics';
 
 export interface SecondaryButtonProps {
@@ -94,14 +94,13 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
-    height: 52,
+    minHeight: layout.controlHeight,
     alignSelf: 'stretch',
-    borderRadius: radius.l,
+    borderRadius: radius.m,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.l,
+    paddingHorizontal: spacing.m,
   },
   filledButton: {
     backgroundColor: colors.vertClair,

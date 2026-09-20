@@ -1,11 +1,16 @@
 {
   "name": "appsurvey",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "db:login": "npx supabase login",
     "db:link": "npx supabase link --project-ref tsttdhoecetcouywjjsf",
     "db:push": "npx supabase db push",
-    "db:status": "npx supabase migration list"
+    "db:status": "npx supabase migration list",
+    "mobile:build:apk": "npm run build:apk --workspace @appsurvey/mobile"
   },
   "devDependencies": {
     "supabase": "^2.117.0"

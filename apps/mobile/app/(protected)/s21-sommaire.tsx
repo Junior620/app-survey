@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -36,7 +36,7 @@ export default function S21SommaireScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="S21 - SOMMAIRE QUESTIONNAIRE"
+        title="Sommaire du questionnaire"
         subtitle="Suivi des Sections A à H & Auto-Sauvegarde"
         onBack={() => router.back()}
       />
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   prodTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: spacing.m,
   },
   progressHeaderRow: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   progressPct: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   progressBarTrack: {
     height: 10,
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   checkLink: {
     ...typography.presets.labelMedium,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   actionBtn: {
     marginBottom: spacing.s,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.s,
     marginBottom: spacing.s,
   },
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
   sectionBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   sectionCardTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     marginVertical: 2,
   },
   sectionCardMeta: {

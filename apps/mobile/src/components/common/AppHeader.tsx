@@ -6,15 +6,17 @@ import {
   TouchableOpacity,
   StyleProp,
   ViewStyle,
-  TextStyle,
 } from 'react-native';
-import { IconButton } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { colors, spacing, typography, radius } from '../../theme';
+import { useTranslation } from 'react-i18next';
+import { colors, spacing, typography, layout } from '../../theme';
+import { SemanticIcon } from './icons';
 
 export interface AppHeaderProps {
   title: string;
   subtitle?: string;
+  /** Optional site/dossier context under the subtitle */
+  contextLabel?: string;
   onBack?: () => void;
   showBack?: boolean;
   rightActions?: React.ReactNode;
@@ -27,6 +29,7 @@ export interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({
   title,
   subtitle,
+  contextLabel,
   onBack,
   showBack = true,
   rightActions,
@@ -36,6 +39,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   testID,
 }) => {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleBackPress = () => {
     if (onBack) {
@@ -54,69 +58,66 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       accessibilityRole="header"
     >
       <View style={styles.leftContainer}>
-        {canNavigateBack && (
+        {canNavigateBack ? (
           <TouchableOpacity
             style={styles.backButton}
             onPress={handleBackPress}
             accessibilityRole="button"
-            accessibilityLabel="Retour"
-            accessibilityHint="Retourne à l'écran précédent"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityLabel={t('common.back')}
+            accessibilityHint={t('common.back')}
+            hitSlop={layout.hitSlop}
           >
-            <IconButton
-              icon="arrow-left"
-              iconColor={titleColor}
-              size={24}
-              style={styles.iconButton}
-            />
+            <SemanticIcon name="back" size={layout.iconSizeLg} color={titleColor} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.titleContainer}>
         <Text
-          numberOfLines={1}
+          numberOfLines={2}
           style={[styles.title, { color: titleColor }]}
           accessibilityRole="header"
         >
           {title}
         </Text>
-        {subtitle && (
-          <Text numberOfLines={1} style={styles.subtitle}>
+        {contextLabel ? (
+          <Text numberOfLines={1} style={styles.context}>
+            {contextLabel}
+          </Text>
+        ) : null}
+        {subtitle ? (
+          <Text numberOfLines={2} style={styles.subtitle}>
             {subtitle}
           </Text>
-        )}
+        ) : null}
       </View>
 
-      <View style={styles.rightContainer}>
-        {rightActions}
-      </View>
+      <View style={styles.rightContainer}>{rightActions}</View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: 56,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.s,
+    paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.bordure,
   },
   leftContainer: {
-    width: 48,
+    width: layout.controlHeight,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   backButton: {
-    borderRadius: radius.full,
-    justifyContent: 'center',
+    width: layout.controlHeight,
+    height: layout.controlHeight,
     alignItems: 'center',
-  },
-  iconButton: {
-    margin: 0,
+    justifyContent: 'center',
   },
   titleContainer: {
     flex: 1,
@@ -125,17 +126,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.s,
   },
   title: {
-    ...typography.presets.titleMedium,
+    ...typography.presets.h3,
+    fontSize: 20,
+    lineHeight: 26,
     textAlign: 'center',
+  },
+  context: {
+    ...typography.presets.labelMedium,
+    color: colors.vert,
+    textAlign: 'center',
+    marginTop: 2,
   },
   subtitle: {
-    ...typography.presets.bodySmall,
-    color: colors.horsLigne,
+    ...typography.presets.meta,
+    color: colors.texteSecondaire,
     textAlign: 'center',
-    marginTop: -2,
+    marginTop: 2,
   },
   rightContainer: {
-    minWidth: 48,
+    minWidth: layout.controlHeight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',

@@ -1,16 +1,22 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SemanticIcon } from '../common';
 import { colors, radius, spacing, typography } from '../../theme';
 
-export const DemoModeBanner: React.FC = () => (
-  <View style={styles.banner} accessibilityRole="text" accessibilityLabel="Mode démonstration actif">
-    <SemanticIcon name="flash" size={16} color={colors.attention} />
-    <Text style={styles.text}>
-      Mode démonstration — données fictives isolées, non opérationnelles
-    </Text>
-  </View>
-);
+export const DemoModeBanner: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={styles.banner}
+      accessibilityRole="text"
+      accessibilityLabel={t('demo.bannerA11y')}
+    >
+      <SemanticIcon name="flash" size={16} color={colors.attention} />
+      <Text style={styles.text}>{t('demo.banner')}</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   banner: {

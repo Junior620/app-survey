@@ -19,7 +19,14 @@ import {
   saveSurveyResponse,
 } from '../../src/data';
 import type { QuestionnaireDefinitionSnapshot, SurveyAnswerMap } from '@appsurvey/shared';
-import { roleHasPermission } from '@appsurvey/shared';
+import {
+  resolveLocalized,
+  roleHasPermission,
+  collectSnapshotLocalizedFields,
+  measureQuestionnaireTranslationCompleteness,
+} from '@appsurvey/shared';
+import { useLocaleStore } from '../../src/stores/useLocaleStore';
+import { useTranslation } from 'react-i18next';
 import { SurveyRenderer } from '../../src/survey/SurveyRenderer';
 import {
   findUnsupportedTypes,
@@ -30,6 +37,8 @@ import { submitSurveyWithClmrs, labelRule } from '../../src/clmrs';
 import { DETECTION_STATUS_LABELS, SEVERITY_LABELS } from '../../src/clmrs/labels';
 
 export default function SurveyRunScreen() {
+  const { t } = useTranslation();
+  const locale = useLocaleStore((s) => s.displayLocale);
   const router = useRouter();
   const params = useLocalSearchParams<{
     questionnaireId: string;
@@ -187,7 +196,7 @@ export default function SurveyRunScreen() {
       if (result.criticalAlert) {
         Alert.alert(
           'Alerte protection — appareil enquêteur',
-          `${statusLabel} (${sevLabel}).\n\nCas critique enregistré localement. Événement « critical_case_detected » en file d’attente sync.\nLe superviseur ne sera alerté qu’après accusé de réception serveur — ne pas afficher « superviseur notifié » maintenant.`,
+          `${statusLabel} (${sevLabel}).\n\nCas critique enregistré localement. File sync : critical_case_detected + remediation_case.\nLe superviseur ne sera alerté qu’après transfert serveur — ne pas afficher « superviseur notifié » maintenant.`,
           [
             {
               text: 'Voir le signal',
@@ -195,6 +204,15 @@ export default function SurveyRunScreen() {
                 const caseId = result.caseIds[0];
                 router.push(
                   (`/(protected)/s75-pourquoi-ce-signal?caseId=${caseId ?? ''}` as never)
+                );
+              },
+            },
+            {
+              text: 'Remédiation',
+              onPress: () => {
+                const caseId = result.caseIds[0];
+                router.push(
+                  (`/(protected)/s76-remediation?caseId=${caseId ?? ''}` as never)
                 );
               },
             },
@@ -229,7 +247,7 @@ export default function SurveyRunScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title={definition?.title || 'Saisie'}
+        title={definition ? resolveLocalized(definition.title, locale) : t('surveys.title')}
         subtitle={`v${params.versionNumber} · local`}
         onBack={() => router.back()}
         rightActions={<LocalSaveIndicator state={saveState} timeLabel={savedAt} />}
@@ -240,8 +258,18 @@ export default function SurveyRunScreen() {
         <ErrorState title="Impossible de démarrer" message={error || ''} />
       ) : (
         <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          {(() => {
+            if (locale !== 'en') return null;
+            const stats = measureQuestionnaireTranslationCompleteness(
+              collectSnapshotLocalizedFields(definition)
+            );
+            if (stats.total === 0 || stats.withEn >= stats.total) return null;
+            return <Text style={styles.fallbackHint}>{t('surveys.frOnlyFallback')}</Text>;
+          })()}
           {definition.instructions ? (
-            <Text style={styles.instructions}>{definition.instructions}</Text>
+            <Text style={styles.instructions}>
+              {resolveLocalized(definition.instructions, locale)}
+            </Text>
           ) : null}
           <SurveyRenderer
             definition={definition}
@@ -281,6 +309,11 @@ export default function SurveyRunScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.m, paddingBottom: spacing.xxl },
+  fallbackHint: {
+    ...typography.presets.labelSmall,
+    color: colors.attention,
+    marginBottom: spacing.s,
+  },
   instructions: {
     ...typography.presets.bodySmall,
     color: colors.horsLigne,

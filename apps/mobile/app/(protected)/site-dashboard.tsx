@@ -1,18 +1,22 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   AppScreen,
   AppHeader,
+  SiteDashboardHeader,
+  SiteSwitcherSheet,
   SemanticIcon,
   type SemanticIconName,
+  type SiteSwitcherItem,
 } from '../../src/components/common';
 import { DemoModeBanner } from '../../src/components/agent';
-import { colors, radius, spacing, typography, shadows } from '../../src/theme';
+import { colors, radius, spacing, typography } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { useDemoModeStore } from '../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../src/stores/useSiteContext';
-import { getSiteById, getSiteDashboardCounts } from '../../src/data';
+import { getSiteById, getSiteDashboardCounts, listSitesForAccount } from '../../src/data';
 import type { Site } from '@appsurvey/shared';
 import { roleHasPermission } from '@appsurvey/shared';
 import { haptics } from '../../src/utils/haptics';
@@ -28,6 +32,7 @@ type ModuleLink = {
 };
 
 export default function SiteDashboardScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ siteId?: string }>();
   const { user, profile, userRole, logout } = useAuthStore();
@@ -39,8 +44,12 @@ export default function SiteDashboardScreen() {
   const siteId = params.siteId || currentSiteId;
   const canAdminQuestionnaires =
     !!userRole && roleHasPermission(userRole, 'questionnaire.admin');
+  const canEditSite =
+    (!!userRole && roleHasPermission(userRole, 'site.write')) || demoEnabled;
 
   const [site, setSite] = useState<Site | null>(null);
+  const [accessibleSites, setAccessibleSites] = useState<SiteSwitcherItem[]>([]);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [counts, setCounts] = useState({
     planteurs: 0,
     secteurs: 0,
@@ -62,11 +71,21 @@ export default function SiteDashboardScreen() {
         setLoading(true);
         try {
           await setCurrentSiteId(siteId);
-          const s = await getSiteById(accountId, siteId);
-          const c = await getSiteDashboardCounts(accountId, siteId);
+          const [s, c, sites] = await Promise.all([
+            getSiteById(accountId, siteId),
+            getSiteDashboardCounts(accountId, siteId),
+            listSitesForAccount(accountId),
+          ]);
           if (!alive) return;
           setSite(s);
           setCounts(c);
+          setAccessibleSites(
+            sites.map((item) => ({
+              id: item.id,
+              name: item.name,
+              locality: item.locality || '',
+            }))
+          );
         } finally {
           if (alive) setLoading(false);
         }
@@ -77,43 +96,60 @@ export default function SiteDashboardScreen() {
     }, [accountId, siteId, setCurrentSiteId])
   );
 
+  const canSwitchSite = accessibleSites.length > 1;
+
+  const handleSelectSite = async (nextSiteId: string) => {
+    setSwitcherOpen(false);
+    if (nextSiteId === siteId) return;
+    await setCurrentSiteId(nextSiteId);
+    router.replace({
+      pathname: '/(protected)/site-dashboard',
+      params: { siteId: nextSiteId },
+    } as never);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/(public)/s02-login' as never);
+  };
+
   const modules: ModuleLink[] = [
     {
       id: 'planteurs',
-      title: 'Planteurs',
-      subtitle: `${counts.planteurs} enregistrés`,
+      title: t('farmers.title'),
+      subtitle: t('farmers.registered', { count: counts.planteurs }),
       icon: 'producer',
       available: true,
       route: '/(protected)/(agent)/planteurs',
     },
     {
       id: 'visites',
-      title: 'Visites',
-      subtitle: 'Enquêtes et saisie terrain',
+      title: t('sites.visits'),
+      subtitle: t('sites.visitsSubtitle'),
       icon: 'visit',
       available: true,
       route: '/(protected)/(agent)/visites',
     },
     {
       id: 'lots',
-      title: 'Lots et pesées',
-      subtitle: 'Traçabilité cacao',
+      title: t('lots.title'),
+      subtitle: t('lots.traceability'),
       icon: 'lotClosed',
       available: true,
       route: '/(protected)/(agent)/lots',
     },
     {
       id: 'missions',
-      title: 'Missions',
-      subtitle: `${counts.missions} à réaliser`,
+      title: t('missions.title'),
+      subtitle: t('missions.count', { count: counts.missions }),
       icon: 'clipboard',
       available: true,
       route: '/(protected)/(agent)/missions',
     },
     {
       id: 'secteurs',
-      title: 'Secteurs',
-      subtitle: `${counts.secteurs} secteur(s)`,
+      title: t('sites.sectors'),
+      subtitle: t('sites.sectorsCount', { count: counts.secteurs }),
       icon: 'map',
       available: true,
       route: `/(protected)/secteurs?siteId=${siteId}`,
@@ -121,16 +157,18 @@ export default function SiteDashboardScreen() {
     },
     {
       id: 'formations',
-      title: 'Formations',
-      subtitle: counts.formations ? `${counts.formations} en cours` : 'Programmes du site',
+      title: t('training.title'),
+      subtitle: counts.formations
+        ? t('training.inProgressCount', { count: counts.formations })
+        : t('training.sitePrograms'),
       icon: 'school',
       available: true,
       route: `/(protected)/formations?siteId=${siteId}`,
     },
     {
       id: 'enquetes',
-      title: 'Enquêtes',
-      subtitle: 'Questionnaires disponibles + legacy A–H',
+      title: t('surveys.title'),
+      subtitle: t('surveys.availableLegacy'),
       icon: 'questionnaire',
       available: true,
       route: `/(protected)/enquetes-disponibles?siteId=${siteId}`,
@@ -139,8 +177,8 @@ export default function SiteDashboardScreen() {
       ? [
           {
             id: 'q-admin',
-            title: 'Gérer les questionnaires',
-            subtitle: 'Éditeur ADMIN (local)',
+            title: t('sites.manageQuestionnaires'),
+            subtitle: t('sites.manageQuestionnairesSubtitle'),
             icon: 'settings' as SemanticIconName,
             available: true,
             route: `/(protected)/(admin)/questionnaires?siteId=${siteId}`,
@@ -149,19 +187,19 @@ export default function SiteDashboardScreen() {
       : []),
     {
       id: 'mapping',
-      title: 'Parcelles et mapping',
+      title: t('mapping.title'),
       subtitle:
         counts.parcellesUnmapped > 0
-          ? `${counts.parcellesUnmapped} à cartographier — infos`
-          : 'Capacités et limites',
+          ? t('mapping.unmapped', { count: counts.parcellesUnmapped })
+          : t('mapping.info'),
       icon: 'parcel',
       available: true,
       route: '/(protected)/mapping-info',
     },
     {
       id: 'nouveau-planteur',
-      title: 'Nouveau planteur',
-      subtitle: 'Enregistrement local',
+      title: t('farmers.new'),
+      subtitle: t('sites.registerLocal'),
       icon: 'add',
       available: true,
       route: `/(protected)/nouveau-planteur?siteId=${siteId}`,
@@ -171,59 +209,36 @@ export default function SiteDashboardScreen() {
   if (!siteId) {
     return (
       <AppScreen padding={0} backgroundColor={colors.fond}>
-        <AppHeader title="Site" onBack={() => router.back()} />
-        <Text style={styles.missing}>Aucun site sélectionné.</Text>
+        <AppHeader title={t('sites.siteFallback')} onBack={() => router.back()} />
+        <Text style={styles.missing}>{t('sites.noSite')}</Text>
       </AppScreen>
     );
   }
 
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
-      <AppHeader
-        title={site?.name || 'Site'}
-        subtitle={site?.locality}
+      <SiteDashboardHeader
+        siteName={site?.name || t('sites.siteFallback')}
+        locality={site?.locality}
+        canSwitchSite={canSwitchSite}
+        canEditSite={canEditSite}
         onBack={() => router.back()}
-        rightActions={
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                router.push({
-                  pathname: '/(protected)/site-form',
-                  params: { siteId: siteId!, mode: 'edit' },
-                } as never);
-              }}
-              style={styles.changeSite}
-              accessibilityRole="button"
-              accessibilityLabel="Modifier le site"
-            >
-              <Text style={styles.changeSiteText}>Modifier</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                haptics.selection();
-                router.replace('/(protected)/(agent)' as never);
-              }}
-              style={styles.changeSite}
-              accessibilityRole="button"
-              accessibilityLabel="Changer de site"
-            >
-              <Text style={styles.changeSiteText}>Changer</Text>
-            </Pressable>
-            <Pressable
-              onPress={async () => {
-                haptics.selection();
-                await logout();
-                router.replace('/(public)/s02-login' as never);
-              }}
-              style={styles.changeSite}
-              accessibilityRole="button"
-              accessibilityLabel="Se déconnecter"
-            >
-              <Text style={[styles.changeSiteText, { color: colors.erreur }]}>Déconnexion</Text>
-            </Pressable>
-          </View>
-        }
+        onChangeSite={() => setSwitcherOpen(true)}
+        onEditSite={() => {
+          router.push({
+            pathname: '/(protected)/site-form',
+            params: { siteId: siteId!, mode: 'edit' },
+          } as never);
+        }}
+        onLogout={handleLogout}
+      />
+
+      <SiteSwitcherSheet
+        visible={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        sites={accessibleSites}
+        currentSiteId={siteId}
+        onSelect={handleSelectSite}
       />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -233,22 +248,14 @@ export default function SiteDashboardScreen() {
           <ActivityIndicator color={colors.vert} />
         ) : (
           <>
-            <View style={styles.contextCard}>
-              <Text style={styles.contextLabel}>Contexte actif</Text>
-              <Text style={styles.contextName}>{site?.name}</Text>
-              <Text style={styles.contextMeta}>
-                {site?.code} · {site?.locality}
-              </Text>
-              <Text style={styles.period}>Indicateurs — données locales actuelles</Text>
-            </View>
-
+            <Text style={styles.dataCaption}>{t('sites.localData')}</Text>
             <View style={styles.kpiRow}>
-              <Kpi label="Planteurs" value={counts.planteurs} />
-              <Kpi label="Missions" value={counts.missions} />
-              <Kpi label="File locale" value={counts.outboxPending} />
+              <Kpi label={t('sites.farmers')} value={counts.planteurs} />
+              <Kpi label={t('sites.missions')} value={counts.missions} />
+              <Kpi label={t('sites.localQueue')} value={counts.outboxPending} />
             </View>
 
-            <Text style={styles.sectionTitle}>Modules</Text>
+            <Text style={styles.sectionTitle}>{t('sites.modules')}</Text>
             {modules.map((m) => (
               <Pressable
                 key={m.id}
@@ -279,7 +286,7 @@ export default function SiteDashboardScreen() {
                 {m.available ? (
                   <SemanticIcon name="next" size={18} color={colors.texteSecondaire} />
                 ) : (
-                  <Text style={styles.soon}>Bientôt</Text>
+                  <Text style={styles.soon}>{t('common.soon')}</Text>
                 )}
               </Pressable>
             ))}
@@ -307,49 +314,11 @@ const styles = StyleSheet.create({
     color: colors.texteSecondaire,
     padding: spacing.m,
   },
-  changeSite: {
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
-  },
-  changeSiteText: {
-    ...typography.presets.labelLarge,
-    color: colors.vert,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  contextCard: {
-    backgroundColor: colors.blanc,
-    borderRadius: radius.m,
-    borderWidth: 1,
-    borderColor: colors.bordure,
-    padding: spacing.m,
-    marginBottom: spacing.m,
-    ...shadows.sm,
-  },
-  contextLabel: {
+  dataCaption: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-  },
-  contextName: {
-    ...typography.presets.titleMedium,
-    color: colors.texte,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  contextMeta: {
-    ...typography.presets.bodySmall,
-    color: colors.texteSecondaire,
-    marginTop: 2,
-  },
-  period: {
-    ...typography.presets.labelSmall,
-    color: colors.vert,
-    marginTop: spacing.s,
     fontWeight: '600',
+    marginBottom: spacing.xs,
   },
   kpiRow: {
     flexDirection: 'row',
@@ -366,7 +335,7 @@ const styles = StyleSheet.create({
   kpiValue: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   kpiLabel: {
     ...typography.presets.labelSmall,

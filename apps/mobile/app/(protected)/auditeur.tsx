@@ -1,10 +1,11 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Card, Chip, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { afrexiaColors } from '@appsurvey/shared';
 import { SemanticIcon } from '../../src/components/common';
+import { colors } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
+import { formatRoleLabel } from '../../src/utils/roleLabels';
 
 export default function AuditeurScreen() {
   const router = useRouter();
@@ -23,13 +24,13 @@ export default function AuditeurScreen() {
           <Text style={styles.welcomeText}>{profile?.fullName}</Text>
         </View>
         <Chip style={styles.roleChip} textStyle={styles.roleChipText}>
-          {userRole}
+          {formatRoleLabel(userRole)}
         </Chip>
       </View>
 
       <Surface style={styles.readOnlyBanner} elevation={1}>
         <View style={styles.readOnlyRow}>
-          <SemanticIcon name="view" size={16} color={afrexiaColors.secondary} />
+          <SemanticIcon name="view" size={16} color={colors.brun} />
           <Text style={styles.readOnlyText}>Mode Lecture Seule : Consultation des rapports d'audit EUDR</Text>
         </View>
       </Surface>
@@ -46,7 +47,7 @@ export default function AuditeurScreen() {
             style={styles.actionButton}
             contentStyle={styles.actionButtonContent}
             labelStyle={styles.actionButtonLabel}
-            buttonColor={afrexiaColors.secondary}
+            buttonColor={colors.brun}
             onPress={() => {}}
           >
             Télécharger le Rapport de Conformité
@@ -57,7 +58,7 @@ export default function AuditeurScreen() {
       <Button
         mode="text"
         onPress={handleLogout}
-        textColor={afrexiaColors.error}
+        textColor={colors.erreur}
         style={styles.logoutButton}
       >
         Se déconnecter
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 48,
     paddingBottom: 32,
-    backgroundColor: afrexiaColors.background,
+    backgroundColor: colors.fond,
   },
   topBar: {
     flexDirection: 'row',
@@ -81,25 +82,25 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     fontSize: 12,
-    fontWeight: '800',
-    color: afrexiaColors.primary,
+    fontWeight: '700',
+    color: colors.vert,
     letterSpacing: 1,
   },
   welcomeText: {
     fontSize: 18,
-    fontWeight: '800',
-    color: afrexiaColors.onSurface,
+    fontWeight: '700',
+    color: colors.texte,
   },
   roleChip: {
-    backgroundColor: afrexiaColors.secondaryContainer,
+    backgroundColor: colors.brunClair,
   },
   roleChipText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: afrexiaColors.secondary,
+    fontWeight: '700',
+    color: colors.brun,
   },
   readOnlyBanner: {
-    backgroundColor: afrexiaColors.secondaryContainer,
+    backgroundColor: colors.brunClair,
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
@@ -111,14 +112,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   readOnlyText: {
-    color: afrexiaColors.secondary,
+    color: colors.brun,
     fontWeight: '700',
     fontSize: 12,
     textAlign: 'center',
     flexShrink: 1,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.blanc,
     borderRadius: 20,
     elevation: 3,
   },
@@ -127,13 +128,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: afrexiaColors.primary,
+    fontWeight: '700',
+    color: colors.vert,
     marginBottom: 6,
   },
   cardDesc: {
     fontSize: 13,
-    color: afrexiaColors.onSurfaceVariant,
+    color: colors.texteSecondaire,
     lineHeight: 18,
     marginBottom: 16,
   },
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
   actionButtonLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.blanc,
   },
   logoutButton: {
     marginTop: 24,

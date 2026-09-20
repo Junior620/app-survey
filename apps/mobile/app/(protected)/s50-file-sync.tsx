@@ -94,7 +94,17 @@ export default function S50FileSyncScreen() {
                     ? `\n\n${[...result.push.errors, ...result.pull.errors]
                         .slice(0, 3)
                         .join('\n')}`
-                    : '')
+                    : ''),
+                result.conflictCount > 0
+                  ? [
+                      {
+                        text: 'Résoudre les conflits',
+                        onPress: () =>
+                          router.push('/(protected)/s51-resolution-conflits' as never),
+                      },
+                      { text: 'OK' },
+                    ]
+                  : undefined
               );
             } finally {
               setSyncing(false);

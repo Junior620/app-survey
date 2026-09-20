@@ -23,26 +23,27 @@ import { useAuthStore } from '../../../../src/stores/useAuthStore';
 import { canManageQuestionnaires } from '../../../../src/survey/assertQuestionnaireAdmin';
 import { listQuestionnaires } from '../../../../src/data';
 import type { QuestionnaireListItem, QuestionnaireStatus } from '@appsurvey/shared';
-import { QUESTIONNAIRE_CATEGORY_LABELS } from '@appsurvey/shared';
+import { QUESTIONNAIRE_CATEGORY_LABELS, resolveLocalized } from '@appsurvey/shared';
+import { useLocaleStore } from '../../../../src/stores/useLocaleStore';
 
 const STATUS_FILTERS: Array<{ key: QuestionnaireStatus | 'all'; label: string }> = [
   { key: 'all', label: 'Tous' },
   { key: 'draft', label: 'Brouillon' },
-  { key: 'published', label: 'PubliÃ©' },
+  { key: 'published', label: 'Publié' },
   { key: 'suspended', label: 'Suspendu' },
-  { key: 'archived', label: 'ArchivÃ©' },
+  { key: 'archived', label: 'Archivé' },
 ];
 
 function statusChip(status: QuestionnaireStatus) {
   switch (status) {
     case 'published':
-      return <StatusChip status="valide" label="PubliÃ© localement" />;
+      return <StatusChip status="valide" label="Publié localement" />;
     case 'draft':
       return <StatusChip status="brouillon" label="Brouillon local" />;
     case 'suspended':
       return <StatusChip status="alerte" label="Suspendu" />;
     case 'archived':
-      return <StatusChip status="horsligne" label="ArchivÃ©" />;
+      return <StatusChip status="horsligne" label="Archivé" />;
     default:
       return <StatusChip status="brouillon" label={status} />;
   }
@@ -52,6 +53,7 @@ export default function QuestionnairesCatalogScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ siteId?: string }>();
   const { user, profile, userRole } = useAuthStore();
+  const locale = useLocaleStore((s) => s.displayLocale);
   const accountId = user?.id || profile?.id || 'local-account';
 
   const [items, setItems] = useState<QuestionnaireListItem[]>([]);
@@ -97,15 +99,15 @@ export default function QuestionnairesCatalogScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
         title="Questionnaires"
-        subtitle="Ã‰dition locale â€” sync non configurÃ©e"
+        subtitle="Édition locale ? sync non configurée"
         onBack={() => router.back()}
       />
 
       <View style={styles.container}>
         <SensitiveContentNotice
           type="rgpd"
-          title="PÃ©rimÃ¨tre local"
-          message="CrÃ©ation, aperÃ§u, publication et collecte restent sur cet appareil / compte. Aucune diffusion rÃ©elle vers dâ€™autres tÃ©lÃ©phones tant que le sync serveur nâ€™est pas branchÃ©."
+          title="Périmètre local"
+          message="Création, aperçu, publication et collecte restent sur cet appareil / compte. Aucune diffusion réelle vers d'autres téléphones tant que le sync serveur n'est pas branché."
         />
 
         <PrimaryButton
@@ -123,7 +125,7 @@ export default function QuestionnairesCatalogScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Rechercher par titreâ€¦"
+          placeholder="Rechercher par titre?"
           placeholderTextColor={colors.horsLigne}
           style={styles.search}
         />
@@ -149,7 +151,7 @@ export default function QuestionnairesCatalogScreen() {
         ) : items.length === 0 ? (
           <EmptyState
             title="Aucun questionnaire"
-            description="CrÃ©ez un brouillon pour dÃ©marrer. Il sera repris aprÃ¨s redÃ©marrage de lâ€™app."
+            description="Créez un brouillon pour démarrer. Il sera repris après redémarrage de l'app."
           />
         ) : (
           <FlatList
@@ -164,13 +166,15 @@ export default function QuestionnairesCatalogScreen() {
                 }
               >
                 <View style={styles.cardTop}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardTitle}>
+                    {resolveLocalized(item.title, locale)}
+                  </Text>
                   {statusChip(item.status)}
                 </View>
                 <Text style={styles.cardMeta}>
-                  {QUESTIONNAIRE_CATEGORY_LABELS[item.category]} Â· {item.questionCount} question(s)
-                  {item.publishedVersion != null ? ` Â· v${item.publishedVersion}` : ''}
-                  {item.hasDraft ? ' Â· brouillon' : ''}
+                  {QUESTIONNAIRE_CATEGORY_LABELS[item.category]} · {item.questionCount} question(s)
+                  {item.publishedVersion != null ? ` · v${item.publishedVersion}` : ''}
+                  {item.hasDraft ? ' · brouillon' : ''}
                 </Text>
                 <Text style={styles.cardSites}>{item.siteScopeLabel}</Text>
               </Pressable>
@@ -227,7 +231,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
   },
   cardMeta: { ...typography.presets.bodySmall, color: colors.horsLigne },

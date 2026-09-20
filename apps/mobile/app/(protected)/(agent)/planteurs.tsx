@@ -9,6 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, EmptyState, SemanticIcon } from '../../../src/components/common';
 import { DemoModeBanner } from '../../../src/components/agent';
 import { colors, radius, spacing, typography } from '../../../src/theme';
@@ -23,6 +24,7 @@ import {
 import { haptics } from '../../../src/utils/haptics';
 
 export default function PlanteursTabScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
@@ -62,15 +64,15 @@ export default function PlanteursTabScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="Planteurs"
-        subtitle="Registre local"
+        title={t('farmers.title')}
+        subtitle={t('farmers.subtitle')}
         showBack={false}
         rightActions={
           <Pressable
             onPress={openCreate}
             style={styles.headerBtn}
             accessibilityRole="button"
-            accessibilityLabel="Nouveau planteur"
+            accessibilityLabel={t('farmers.new')}
           >
             <SemanticIcon name="add" size={22} color={colors.vert} />
           </Pressable>
@@ -79,7 +81,7 @@ export default function PlanteursTabScreen() {
       <View style={styles.body}>
         {demoEnabled ? <DemoModeBanner /> : null}
         {!currentSiteId ? (
-          <Text style={styles.hint}>Tous les sites — ouvrez un site pour filtrer.</Text>
+          <Text style={styles.hint}>{t('farmers.allSitesHint')}</Text>
         ) : null}
 
         <View style={styles.search}>
@@ -88,7 +90,7 @@ export default function PlanteursTabScreen() {
             style={styles.input}
             value={query}
             onChangeText={setQuery}
-            placeholder="Code, nom…"
+            placeholder={t('farmers.searchPlaceholder')}
             placeholderTextColor={colors.horsLigne}
           />
         </View>
@@ -102,9 +104,9 @@ export default function PlanteursTabScreen() {
             ListEmptyComponent={
               <EmptyState
                 semanticIcon="producer"
-                title="Aucun planteur"
-                description="Enregistrez un planteur pour ce site."
-                actionTitle="Nouveau planteur"
+                title={t('farmers.emptyTitle')}
+                description={t('farmers.emptyDescription')}
+                actionTitle={t('farmers.new')}
                 onAction={openCreate}
               />
             }
@@ -136,7 +138,7 @@ export default function PlanteursTabScreen() {
         )}
 
         <Text style={styles.link} onPress={openCreate}>
-          Nouveau planteur
+          {t('farmers.new')}
         </Text>
       </View>
     </AppScreen>

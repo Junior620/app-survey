@@ -19,6 +19,7 @@ import type {
   VisibilityOperator,
   VisibilityRules,
 } from '@appsurvey/shared';
+import { coerceLocalized } from '@appsurvey/shared';
 
 export default function QuestionEditScreen() {
   const router = useRouter();
@@ -30,7 +31,9 @@ export default function QuestionEditScreen() {
     null
   );
   const [label, setLabel] = useState('');
+  const [labelEn, setLabelEn] = useState('');
   const [help, setHelp] = useState('');
+  const [helpEn, setHelpEn] = useState('');
   const [required, setRequired] = useState(false);
   const [stableKey, setStableKey] = useState('');
   const [options, setOptions] = useState<QuestionOptionDef[]>([]);
@@ -61,8 +64,12 @@ export default function QuestionEditScreen() {
             return;
           }
           setQuestion(q);
-          setLabel(q.label);
-          setHelp(q.help || '');
+          const lab = coerceLocalized(q.label);
+          setLabel(lab.fr);
+          setLabelEn(lab.en || '');
+          const helpLoc = coerceLocalized(q.help || '');
+          setHelp(helpLoc.fr);
+          setHelpEn(helpLoc.en || '');
           setRequired(q.required);
           setStableKey(q.stableKey);
           setOptions(q.options);
@@ -109,8 +116,10 @@ export default function QuestionEditScreen() {
         };
       }
       await updateQuestion(accountId, userRole, id!, qid!, {
-        label,
-        help,
+        label: labelEn.trim() ? { fr: label, en: labelEn.trim() } : label,
+        help: helpEn.trim()
+          ? { fr: help, en: helpEn.trim() }
+          : help || null,
         required,
         stableKey,
         config: {
@@ -142,8 +151,10 @@ export default function QuestionEditScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader title="Éditer la question" onBack={() => router.back()} />
       <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <FormTextField label="Libellé" required value={label} onChangeText={setLabel} />
-        <FormTextField label="Aide" value={help} onChangeText={setHelp} multiline />
+        <FormTextField label="Libellé (FR)" required value={label} onChangeText={setLabel} />
+        <FormTextField label="Label (EN)" value={labelEn} onChangeText={setLabelEn} />
+        <FormTextField label="Aide (FR)" value={help} onChangeText={setHelp} multiline />
+        <FormTextField label="Help (EN)" value={helpEn} onChangeText={setHelpEn} multiline />
         <FormTextField label="Clé technique" value={stableKey} onChangeText={setStableKey} />
 
         <View style={styles.switchRow}>
@@ -170,26 +181,52 @@ export default function QuestionEditScreen() {
         {needsOptions ? (
           <View style={styles.block}>
             <Text style={styles.blockTitle}>Options</Text>
-            {options.map((opt, idx) => (
-              <View key={`${opt.stableKey}-${idx}`} style={styles.optRow}>
-                <FormTextField
-                  label={`Option ${idx + 1}`}
-                  value={opt.label}
-                  onChangeText={(t) => {
-                    const next = [...options];
-                    next[idx] = { ...opt, label: t };
-                    setOptions(next);
-                  }}
-                  containerStyle={{ flex: 1 }}
-                />
-                <Pressable
-                  onPress={() => setOptions(options.filter((_, i) => i !== idx))}
-                  style={styles.removeOpt}
-                >
-                  <Text style={{ color: colors.erreur }}>×</Text>
-                </Pressable>
-              </View>
-            ))}
+            {options.map((opt, idx) => {
+              const loc = coerceLocalized(opt.label);
+              return (
+                <View key={`${opt.stableKey}-${idx}`} style={styles.optBlock}>
+                  <View style={styles.optRow}>
+                    <FormTextField
+                      label={`Option ${idx + 1} (FR)`}
+                      value={loc.fr}
+                      onChangeText={(text) => {
+                        const next = [...options];
+                        const prev = coerceLocalized(opt.label);
+                        next[idx] = {
+                          ...opt,
+                          label: prev.en?.trim()
+                            ? { fr: text, en: prev.en }
+                            : text,
+                        };
+                        setOptions(next);
+                      }}
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Pressable
+                      onPress={() => setOptions(options.filter((_, i) => i !== idx))}
+                      style={styles.removeOpt}
+                    >
+                      <Text style={{ color: colors.erreur }}>×</Text>
+                    </Pressable>
+                  </View>
+                  <FormTextField
+                    label={`Option ${idx + 1} (EN)`}
+                    value={loc.en || ''}
+                    onChangeText={(text) => {
+                      const next = [...options];
+                      const prev = coerceLocalized(opt.label);
+                      next[idx] = {
+                        ...opt,
+                        label: text.trim()
+                          ? { fr: prev.fr, en: text.trim() }
+                          : prev.fr,
+                      };
+                      setOptions(next);
+                    }}
+                  />
+                </View>
+              );
+            })}
             <Pressable
               onPress={() =>
                 setOptions([
@@ -257,9 +294,10 @@ const styles = StyleSheet.create({
   blockTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   optRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  optBlock: { gap: spacing.xs, marginBottom: spacing.s },
   removeOpt: { padding: spacing.s },
   link: { ...typography.presets.labelMedium, color: colors.vert, fontWeight: '700' },
   ops: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },

@@ -1,10 +1,12 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Icon } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '../../../src/theme';
+import { useTranslation } from 'react-i18next';
+import { colors, spacing, typography, layout } from '../../../src/theme';
+import { SemanticIcon } from '../../../src/components/common';
 
 export default function AgentLayout() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, spacing.s);
   const tabBarHeight = 52 + bottomPad;
@@ -24,8 +26,7 @@ export default function AgentLayout() {
           paddingTop: spacing.xs,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          ...typography.presets.labelSmall,
           marginTop: 2,
         },
         tabBarItemStyle: {
@@ -36,54 +37,53 @@ export default function AgentLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Sites',
-          tabBarIcon: ({ color, size }) => (
-            <Icon source="office-building-outline" size={size ?? 22} color={String(color)} />
+          title: t('tabs.sites'),
+          tabBarIcon: ({ color }) => (
+            <SemanticIcon name="building" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Sites et stations',
+          tabBarAccessibilityLabel: t('tabs.sitesA11y'),
         }}
       />
       <Tabs.Screen
         name="missions"
         options={{
-          title: 'Missions',
-          tabBarIcon: ({ color, size }) => (
-            <Icon source="clipboard-check-outline" size={size ?? 22} color={String(color)} />
+          title: t('tabs.missions'),
+          tabBarIcon: ({ color }) => (
+            <SemanticIcon name="clipboard" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Missions',
+          tabBarAccessibilityLabel: t('tabs.missionsA11y'),
         }}
       />
       <Tabs.Screen
         name="planteurs"
         options={{
-          title: 'Planteurs',
-          tabBarIcon: ({ color, size }) => (
-            <Icon source="account-group-outline" size={size ?? 22} color={String(color)} />
+          title: t('tabs.farmers'),
+          tabBarIcon: ({ color }) => (
+            <SemanticIcon name="producer" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Planteurs',
+          tabBarAccessibilityLabel: t('tabs.farmersA11y'),
         }}
       />
       <Tabs.Screen
         name="sync"
         options={{
-          title: 'Synchro',
-          tabBarIcon: ({ color, size }) => (
-            <Icon source="sync" size={size ?? 22} color={String(color)} />
+          title: t('tabs.sync'),
+          tabBarIcon: ({ color }) => (
+            <SemanticIcon name="sync" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Synchronisation',
+          tabBarAccessibilityLabel: t('tabs.syncA11y'),
         }}
       />
       <Tabs.Screen
         name="plus"
         options={{
-          title: 'Plus',
-          tabBarIcon: ({ color, size }) => (
-            <Icon source="dots-horizontal" size={size ?? 22} color={String(color)} />
+          title: t('tabs.more'),
+          tabBarIcon: ({ color }) => (
+            <SemanticIcon name="settings" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Plus de modules',
+          tabBarAccessibilityLabel: t('tabs.moreA11y'),
         }}
       />
-      {/* Existing modules kept reachable, hidden from tab bar */}
       <Tabs.Screen name="visites" options={{ href: null }} />
       <Tabs.Screen name="lots" options={{ href: null }} />
     </Tabs>

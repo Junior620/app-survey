@@ -335,8 +335,8 @@ export default function AgentLotsScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond} style={styles.screen}>
       <AppHeader
-        title="Lots & pesées"
-        subtitle="Traçabilité du cacao"
+        title="Lots et pesées"
+        subtitle="Aperçu démo — données non persistées"
         showBack={false}
       />
 

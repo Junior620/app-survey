@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, SemanticIcon, type SemanticIconName } from '../../../src/components/common';
 import { DemoModeBanner } from '../../../src/components/agent';
 import { colors, radius, spacing, typography } from '../../../src/theme';
@@ -9,6 +10,7 @@ import { useSiteContext } from '../../../src/stores/useSiteContext';
 import { haptics } from '../../../src/utils/haptics';
 
 type LinkItem = {
+  id: string;
   title: string;
   subtitle: string;
   icon: SemanticIconName;
@@ -17,6 +19,7 @@ type LinkItem = {
 };
 
 export default function PlusScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const setDemoEnabled = useDemoModeStore((s) => s.setEnabled);
@@ -24,22 +27,33 @@ export default function PlusScreen() {
 
   const links: LinkItem[] = [
     {
-      title: 'Visites',
-      subtitle: 'Liste et reprise des enquêtes',
+      id: 'settings',
+      title: t('settings.title'),
+      subtitle: t('settings.languageSubtitle'),
+      icon: 'language',
+      route: '/(protected)/settings',
+      available: true,
+    },
+    {
+      id: 'visites',
+      title: t('surveys.title'),
+      subtitle: t('surveys.available'),
       icon: 'visit',
       route: '/(protected)/(agent)/visites',
       available: true,
     },
     {
-      title: 'Lots et pesées',
-      subtitle: 'Registre des lots',
+      id: 'lots',
+      title: t('lots.title'),
+      subtitle: t('lots.cocoaLot'),
       icon: 'lotClosed',
       route: '/(protected)/(agent)/lots',
       available: true,
     },
     {
-      title: 'Secteurs',
-      subtitle: currentSiteId ? 'Sectorisation du site actif' : 'Ouvrez un site d’abord',
+      id: 'secteurs',
+      title: t('farmers.sector'),
+      subtitle: currentSiteId ? t('sites.modules') : t('sites.noSite'),
       icon: 'map',
       route: currentSiteId
         ? `/(protected)/secteurs?siteId=${currentSiteId}`
@@ -47,22 +61,9 @@ export default function PlusScreen() {
       available: !!currentSiteId,
     },
     {
-      title: 'Sommaire enquête',
-      subtitle: 'Sections A–H',
-      icon: 'questionnaire',
-      route: '/(protected)/s21-sommaire',
-      available: true,
-    },
-    {
-      title: 'File de transfert',
-      subtitle: 'Outbox locale',
-      icon: 'sync',
-      route: '/(protected)/s50-file-sync',
-      available: true,
-    },
-    {
-      title: 'Formations',
-      subtitle: currentSiteId ? 'Programme du site actif' : 'Ouvrez un site d’abord',
+      id: 'formations',
+      title: t('training.title'),
+      subtitle: currentSiteId ? t('training.session') : t('sites.noSite'),
       icon: 'school',
       route: currentSiteId
         ? `/(protected)/formations?siteId=${currentSiteId}`
@@ -70,14 +71,24 @@ export default function PlusScreen() {
       available: !!currentSiteId,
     },
     {
-      title: 'Mapping GPS',
-      subtitle: 'Non disponible dans cet incrément',
+      id: 'sync-file',
+      title: t('sync.title'),
+      subtitle: t('sync.subtitle'),
+      icon: 'sync',
+      route: '/(protected)/s50-file-sync',
+      available: true,
+    },
+    {
+      id: 'mapping',
+      title: t('mapping.title'),
+      subtitle: t('common.soon'),
       icon: 'parcel',
       available: false,
     },
     {
-      title: 'Revoir la présentation',
-      subtitle: 'Introduction SCPB Survey',
+      id: 'onboarding-review',
+      title: t('onboarding.chooseLanguageTitle'),
+      subtitle: t('common.brand'),
       icon: 'help',
       route: '/(public)/s01-onboarding?review=1',
       available: true,
@@ -86,7 +97,11 @@ export default function PlusScreen() {
 
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
-      <AppHeader title="Plus" subtitle="Modules et réglages" showBack={false} />
+      <AppHeader
+        title={t('tabs.more')}
+        subtitle={t('settings.title')}
+        showBack={false}
+      />
       <ScrollView contentContainerStyle={styles.container}>
         {demoEnabled ? <DemoModeBanner /> : null}
 
@@ -112,7 +127,7 @@ export default function PlusScreen() {
 
         {links.map((l) => (
           <Pressable
-            key={l.title}
+            key={l.id}
             disabled={!l.available}
             onPress={() => {
               if (!l.available || !l.route) return;
@@ -133,7 +148,7 @@ export default function PlusScreen() {
             {l.available ? (
               <SemanticIcon name="next" size={18} color={colors.texteSecondaire} />
             ) : (
-              <Text style={styles.soon}>Bientôt</Text>
+              <Text style={styles.soon}>{t('common.soon')}</Text>
             )}
           </Pressable>
         ))}

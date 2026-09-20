@@ -1,0 +1,48 @@
+﻿{
+  "id": "df5ab878-ec44-4b67-95f8-14243001e9fb",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/20FQH40I5XJBv-KbnkdIw7rHme0IHTqfA_h7NeQecPs.apk",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/20FQH40I5XJBv-KbnkdIw7rHme0IHTqfA_h7NeQecPs.apk"
+  },
+  "fingerprint": {
+    "id": "01a0bd80-62f1-7c95-b0db-670c7d455f9f",
+    "hash": "57514925b78fdb109a399b13677525210737d636"
+  },
+  "initiatingActor": {
+    "id": "c8207c5f-1bc5-473e-a9b9-a52cd83e2e66",
+    "displayName": "app-survey"
+  },
+  "logFiles": [
+    "https://storage.googleapis.com/eas-workflows-production/logs/209ad70f-194d-4ecd-9ef4-c572ddd36b58/df5ab878-ec44-4b67-95f8-14243001e9fb/2026-09-20T06%3A28%3A24Z-a4400422-ac1c-41b2-92b3-e28c27d3a623.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260920%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260920T063850Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=628db93ac0b44e5fe613ec29cd78720a81d11f215b9e746fbe601f9ebf99a94741149e7a79f17086134f6877a1d72a8e1e740b90d220e0c93604c6ae92003c1f84ce07d91c937e5a7bd02fb8c2481063ab2bc83e05e58c83fe829c9e3eac40f4dec038104ba3c641a29cdb036cb67a4a4f55296198bc1860448533a3460158f9b75895d1f9d6bdb1ca57d6bba400e59f80921e49e8e1cd893f367729235b3e27c0b236ebb04f43cb6e94bce8d09177a18dea9b3ae89f490dfcbf0fb475f6669c59f1434816f0dbab88855f970baa8d65fed1e262d003d94b899ed7685f82f74fc5eba68cfd4873f9c770b6674196da9273abfe7a168bef07c9dda55a59b12fde"
+  ],
+  "app": {
+    "id": "209ad70f-194d-4ecd-9ef4-c572ddd36b58",
+    "name": "scpb-survey",
+    "slug": "scpb-survey",
+    "ownerAccount": {
+      "id": "e9c0e6c5-c47f-460f-b81c-40be19233be5",
+      "name": "app-survey"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "appIdentifier": "com.scpb.survey",
+  "sdkVersion": "57.0.0",
+  "appVersion": "1.0.0",
+  "appBuildVersion": "1",
+  "gitCommitHash": "f8f50ce7e962b4ffbfc7ce40de4fa91953531fed",
+  "gitCommitMessage": "Initial commit: Expo mobile app, CLMRS engine, Supabase sync, and Android legacy.\n\nIncludes offline-first CLMRS detection (CM/2026.1), survey submission transaction, admin/sync modules, and auth connectivity fixes.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+  "priority": "NORMAL",
+  "createdAt": "2026-09-20T06:28:22.853Z",
+  "updatedAt": "2026-09-20T06:39:46.744Z",
+  "completedAt": "2026-09-20T06:39:46.572Z",
+  "expirationDate": "2026-10-04T06:28:22.892Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 1315,
+    "buildQueueTime": 4451,
+    "buildDuration": 677953
+  }
+}

@@ -1,5 +1,19 @@
 /** Domain types for dynamic questionnaires / sondages */
 
+import type { LocalizedString } from '../i18n/localizedString';
+import { resolveLocalized, type DisplayLocale } from '../i18n/localizedString';
+
+export type { LocalizedString };
+export {
+  coerceLocalized,
+  resolveLocalized,
+  hasEnglish,
+  serializeLocalized,
+  deserializeLocalized,
+  measureQuestionnaireTranslationCompleteness,
+} from '../i18n/localizedString';
+export type { DisplayLocale, TranslationCompleteness } from '../i18n/localizedString';
+
 export type QuestionnaireUsage = 'questionnaire' | 'sondage';
 
 export type QuestionnaireCategory =
@@ -79,7 +93,8 @@ export interface VisibilityRules {
 
 export interface QuestionOptionDef {
   stableKey: string;
-  label: string;
+  /** Content label — LocalizedString (legacy plain string = FR) */
+  label: LocalizedString;
   sortOrder: number;
   isOther?: boolean;
   isExclusive?: boolean;
@@ -92,15 +107,15 @@ export interface QuestionValidation {
   max?: number;
   minSelections?: number;
   maxSelections?: number;
-  customError?: string;
+  customError?: LocalizedString;
 }
 
 export interface QuestionConfig {
   unit?: string;
   scaleMin?: number;
   scaleMax?: number;
-  scaleMinLabel?: string;
-  scaleMaxLabel?: string;
+  scaleMinLabel?: LocalizedString;
+  scaleMaxLabel?: LocalizedString;
   yesNoExtras?: Array<'unknown' | 'refused' | 'na'>;
   otherRequiresText?: boolean;
 }
@@ -110,8 +125,8 @@ export interface QuestionDefinition {
   stableKey: string;
   sectionId: string;
   type: QuestionType;
-  label: string;
-  help?: string | null;
+  label: LocalizedString;
+  help?: LocalizedString | null;
   required: boolean;
   config: QuestionConfig;
   validation: QuestionValidation;
@@ -122,7 +137,7 @@ export interface QuestionDefinition {
 
 export interface SectionDefinition {
   id: string;
-  title: string;
+  title: LocalizedString;
   sortOrder: number;
   visibility: VisibilityRules | null;
   questions: QuestionDefinition[];
@@ -132,19 +147,19 @@ export interface SectionDefinition {
 export interface QuestionnaireDefinitionSnapshot {
   questionnaireId: string;
   versionNumber: number;
-  title: string;
-  description: string | null;
+  title: LocalizedString;
+  description: LocalizedString | null;
   usage: QuestionnaireUsage;
   category: QuestionnaireCategory;
   subjectType: QuestionnaireSubjectType;
-  instructions: string | null;
-  confidentiality: string;
+  instructions: LocalizedString | null;
+  confidentiality: LocalizedString;
   sections: SectionDefinition[];
 }
 
 export interface QuestionnaireListItem {
   id: string;
-  title: string;
+  title: LocalizedString;
   category: QuestionnaireCategory;
   usage: QuestionnaireUsage;
   status: QuestionnaireStatus;
@@ -170,7 +185,7 @@ export type SurveyAnswerValue =
 
 export type SurveyAnswerMap = Record<string, SurveyAnswerValue>;
 
-export const QUESTIONNAIRE_CATEGORY_LABELS: Record<QuestionnaireCategory, string> = {
+const CATEGORY_LABELS_FR: Record<QuestionnaireCategory, string> = {
   enquete_annuelle: 'Enquête annuelle',
   menage: 'Ménage',
   pratiques_agricoles: 'Pratiques agricoles',
@@ -183,7 +198,30 @@ export const QUESTIONNAIRE_CATEGORY_LABELS: Record<QuestionnaireCategory, string
   autre: 'Autre',
 };
 
-export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+const CATEGORY_LABELS_EN: Record<QuestionnaireCategory, string> = {
+  enquete_annuelle: 'Annual survey',
+  menage: 'Household',
+  pratiques_agricoles: 'Agricultural practices',
+  production: 'Production',
+  post_recolte: 'Post-harvest',
+  evaluation_formation: 'Training evaluation',
+  satisfaction: 'Satisfaction',
+  sante_securite: 'Health and safety',
+  protection_enfant: 'Child protection',
+  autre: 'Other',
+};
+
+/** @deprecated Prefer getQuestionnaireCategoryLabel(cat, locale) */
+export const QUESTIONNAIRE_CATEGORY_LABELS = CATEGORY_LABELS_FR;
+
+export function getQuestionnaireCategoryLabel(
+  category: QuestionnaireCategory,
+  locale: DisplayLocale = 'fr'
+): string {
+  return locale === 'en' ? CATEGORY_LABELS_EN[category] : CATEGORY_LABELS_FR[category];
+}
+
+const QUESTION_TYPE_LABELS_FR: Record<QuestionType, string> = {
   short_text: 'Texte court',
   long_text: 'Texte long',
   integer: 'Nombre entier',
@@ -196,3 +234,57 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   info: 'Information',
   photo: 'Photo',
 };
+
+const QUESTION_TYPE_LABELS_EN: Record<QuestionType, string> = {
+  short_text: 'Short text',
+  long_text: 'Long text',
+  integer: 'Integer',
+  decimal: 'Decimal',
+  date: 'Date',
+  single_choice: 'Single choice',
+  multi_choice: 'Multiple choice',
+  yes_no: 'Yes / No',
+  rating_scale: 'Scale',
+  info: 'Information',
+  photo: 'Photo',
+};
+
+/** @deprecated Prefer getQuestionTypeLabel(type, locale) */
+export const QUESTION_TYPE_LABELS = QUESTION_TYPE_LABELS_FR;
+
+export function getQuestionTypeLabel(type: QuestionType, locale: DisplayLocale = 'fr'): string {
+  return locale === 'en' ? QUESTION_TYPE_LABELS_EN[type] : QUESTION_TYPE_LABELS_FR[type];
+}
+
+/** Collect all user-facing content fields from a snapshot for EN completeness. */
+export function collectSnapshotLocalizedFields(
+  snapshot: QuestionnaireDefinitionSnapshot
+): LocalizedString[] {
+  const fields: LocalizedString[] = [
+    snapshot.title,
+    snapshot.description ?? '',
+    snapshot.instructions ?? '',
+    snapshot.confidentiality,
+  ];
+  for (const section of snapshot.sections) {
+    fields.push(section.title);
+    for (const q of section.questions) {
+      fields.push(q.label);
+      if (q.help) fields.push(q.help);
+      if (q.validation?.customError) fields.push(q.validation.customError);
+      if (q.config.scaleMinLabel) fields.push(q.config.scaleMinLabel);
+      if (q.config.scaleMaxLabel) fields.push(q.config.scaleMaxLabel);
+      for (const opt of q.options) {
+        fields.push(opt.label);
+      }
+    }
+  }
+  return fields;
+}
+
+export function resolveSnapshotTitle(
+  snapshot: Pick<QuestionnaireDefinitionSnapshot, 'title'>,
+  locale: DisplayLocale
+): string {
+  return resolveLocalized(snapshot.title, locale);
+}

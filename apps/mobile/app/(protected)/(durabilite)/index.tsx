@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -30,7 +30,7 @@ export default function DurabiliteHomeScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="ESPACE DURABILITÉ & CONFORMITÉ"
+        title="Durabilité"
         subtitle={managerName}
         showBack={false}
         rightActions={
@@ -44,7 +44,7 @@ export default function DurabiliteHomeScreen() {
         {/* Compliance Role Notice */}
         <SensitiveContentNotice
           type="audit"
-          title="SUPERVISION EXPLICITE ET EXPLICABLE"
+          title="Supervision"
           message="Affichage d'évaluation sans score opaque 0-100. Analyse basée sur des facteurs vérifiables : polygones GPS EUDR, critères de scolarisation et constats terrain."
         />
 
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.l,
     marginBottom: spacing.s,
   },
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   workspaceTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
   },
   workspaceDesc: {

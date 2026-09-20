@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   AppScreen,
@@ -42,7 +42,7 @@ export default function DurabiliteRechercheScreen() {
 
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
-      <AppHeader title="RECHERCHE AVANCÉE & AUDIT" subtitle="Indexation Global SCPB Survey" showBack={false} />
+      <AppHeader title="Recherche" subtitle="Planteurs, lots et dossiers" showBack={false} />
 
       <KeyboardAwareScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Search Field */}
@@ -158,12 +158,12 @@ const styles = StyleSheet.create({
   },
   catTextActive: {
     color: colors.blanc,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -193,12 +193,12 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   resultTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   resultId: {
     ...typography.presets.bodySmall,

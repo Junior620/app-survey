@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -84,7 +84,7 @@ export default function S69ListeLotsScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="REGISTRE DES LOTS DE CACAO"
+        title="Registre des lots"
         subtitle="Traçabilité Physique & Logistique EUDR"
         onBack={() => router.back()}
       />
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   complianceIcon: { marginRight: spacing.s, marginTop: 2 },
   complianceTextWrapper: { flex: 1 },
-  complianceTitle: { ...typography.presets.labelLarge, color: colors.vert, fontWeight: '800', marginBottom: 2 },
+  complianceTitle: { ...typography.presets.labelLarge, color: colors.vert, fontWeight: '700', marginBottom: 2 },
   complianceText: { ...typography.presets.bodySmall, color: colors.texte, lineHeight: 18 },
   actionRow: {
     flexDirection: 'row',
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: spacing.m,
   },
-  lotCode: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '800' },
+  lotCode: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
   coopText: { ...typography.presets.bodySmall, color: colors.brun, fontWeight: '600' },
   statsRow: {
     flexDirection: 'row',
@@ -280,8 +280,8 @@ const styles = StyleSheet.create({
   },
   statBox: { flex: 1, alignItems: 'center' },
   statLabel: { ...typography.presets.labelSmall, color: colors.horsLigne, fontSize: 10 },
-  statValue: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '800', marginTop: 2 },
-  statValueHighlight: { ...typography.presets.titleSmall, color: colors.vert, fontWeight: '800', marginTop: 2 },
+  statValue: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '700', marginTop: 2 },
+  statValueHighlight: { ...typography.presets.titleSmall, color: colors.vert, fontWeight: '700', marginTop: 2 },
   statCode: { ...typography.presets.labelSmall, color: colors.brun, fontWeight: '700', marginTop: 2 },
   lotFooter: {
     flexDirection: 'row',
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
     borderRadius: radius.s,
   },
-  miniBtnText: { ...typography.presets.labelSmall, color: colors.blanc, fontWeight: '800' },
+  miniBtnText: { ...typography.presets.labelSmall, color: colors.blanc, fontWeight: '700' },
   miniBtnSecondary: { backgroundColor: colors.brunClair },
-  miniBtnTextSecondary: { ...typography.presets.labelSmall, color: colors.brun, fontWeight: '800' },
+  miniBtnTextSecondary: { ...typography.presets.labelSmall, color: colors.brun, fontWeight: '700' },
 });

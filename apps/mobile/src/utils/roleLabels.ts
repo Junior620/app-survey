@@ -1,18 +1,38 @@
+import type { TFunction } from 'i18next';
 import type { AppRole } from '@appsurvey/shared';
+import { i18n } from '../i18n';
 
-const ROLE_LABELS: Record<string, string> = {
-  AGENT_TERRAIN: 'Agent terrain',
-  RESPONSABLE_SITE: 'Responsable de site',
-  RESPONSABLE_DURABILITE: 'Responsable durabilité',
-  REFERENT_PROTECTION: 'Référent protection',
-  ADMIN: 'Administrateur',
-  AUDITEUR: 'Auditeur',
-};
+const KNOWN_ROLES = [
+  'AGENT_TERRAIN',
+  'RESPONSABLE_SITE',
+  'RESPONSABLE_DURABILITE',
+  'REFERENT_PROTECTION',
+  'ADMIN',
+  'AUDITEUR',
+] as const;
+
+type KnownRole = (typeof KNOWN_ROLES)[number];
+
+function isKnownRole(role: string): role is KnownRole {
+  return (KNOWN_ROLES as readonly string[]).includes(role);
+}
 
 /** Human-readable role label — never invents a role when unknown. */
+export function getRoleLabel(
+  role: AppRole | string | null | undefined,
+  t: TFunction
+): string {
+  if (!role) return t('roles.undefined');
+  if (isKnownRole(role)) return t(`roles.${role}`);
+  return role
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+/** Convenience wrapper using the shared i18n instance. */
 export function formatRoleLabel(role: AppRole | string | null | undefined): string {
-  if (!role) return 'Rôle non défini';
-  return ROLE_LABELS[role] ?? role.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  return getRoleLabel(role, i18n.t.bind(i18n));
 }
 
 /** First given name from a full name, or the full string if single token. */

@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
+import { AppState, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, usePathname } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { afrexiaColors, afrexiaTheme } from '@appsurvey/shared';
+import { colors } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
+import { requestAutoSync, startAutoSyncPolling } from '../../src/data/autoSync';
 
 export default function ProtectedLayout() {
   const router = useRouter();
   const pathname = usePathname();
-  const { status, user, isOffline } = useAuthStore();
+  const { status, user, isOffline, refreshConnectivity } = useAuthStore();
+
 
   useEffect(() => {
     if (status === 'initializing') return;
@@ -21,10 +23,28 @@ export default function ProtectedLayout() {
     }
   }, [status, user, isOffline, pathname, router]);
 
+  useEffect(() => {
+    const accountId = user?.id;
+    if (!accountId) return;
+
+    const stopPoll = startAutoSyncPolling(accountId);
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        void refreshConnectivity().then((online) => {
+          if (online) requestAutoSync(accountId);
+        });
+      }
+    });
+    return () => {
+      stopPoll();
+      sub.remove();
+    };
+  }, [user?.id, refreshConnectivity]);
+
   if (status === 'initializing') {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={afrexiaColors.primary} />
+        <ActivityIndicator size="large" color={colors.vert} />
       </View>
     );
   }
@@ -33,13 +53,14 @@ export default function ProtectedLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: afrexiaTheme.colors.background },
+        contentStyle: { backgroundColor: colors.fond },
         animation: 'slide_from_right',
       }}
     >
       <Stack.Screen name="s05-session-check" />
       <Stack.Screen name="s06-offline-access" />
       <Stack.Screen name="s07-access-denied" />
+      <Stack.Screen name="settings" />
       <Stack.Screen name="(agent)" />
       <Stack.Screen name="(durabilite)" />
       <Stack.Screen name="(admin)" />
@@ -84,7 +105,7 @@ export default function ProtectedLayout() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: afrexiaColors.background,
+    backgroundColor: colors.fond,
     justifyContent: 'center',
     alignItems: 'center',
   },

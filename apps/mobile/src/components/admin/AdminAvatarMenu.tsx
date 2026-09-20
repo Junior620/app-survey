@@ -7,6 +7,7 @@ import {
   Pressable,
   TouchableOpacity,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SemanticIcon } from '../common';
 import { colors, radius, spacing, typography, shadows } from '../../theme';
 import { haptics } from '../../utils/haptics';
@@ -33,6 +34,7 @@ export function AdminAvatarMenu({
   onSettings,
   onLogout,
 }: AdminAvatarMenuProps) {
+  const { t } = useTranslation();
   const reduceMotion = useReduceMotion();
 
   const run = (fn: () => void) => {
@@ -52,7 +54,7 @@ export function AdminAvatarMenu({
       <Pressable
         style={styles.backdrop}
         onPress={onClose}
-        accessibilityLabel="Fermer le menu"
+        accessibilityLabel={t('admin.closeMenu')}
       >
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
@@ -73,17 +75,17 @@ export function AdminAvatarMenu({
 
           <MenuItem
             icon="profile"
-            label="Mon profil"
+            label={t('admin.profile')}
             onPress={() => run(onProfile)}
           />
           <MenuItem
             icon="settings"
-            label="Paramètres"
+            label={t('common.settings')}
             onPress={() => run(onSettings)}
           />
           <MenuItem
             icon="logout"
-            label="Déconnexion"
+            label={t('common.logout')}
             destructive
             onPress={() => {
               haptics.impactMedium();
@@ -135,6 +137,7 @@ export function AdminAvatarButton({
   initials: string;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity
       style={styles.headerAvatar}
@@ -143,7 +146,7 @@ export function AdminAvatarButton({
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel="Menu compte"
+      accessibilityLabel={t('admin.accountMenu')}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Text style={styles.headerAvatarText}>{initials}</Text>

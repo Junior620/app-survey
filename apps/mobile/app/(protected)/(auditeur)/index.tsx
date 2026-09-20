@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.l,
     marginBottom: spacing.s,
   },
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
   },
   cardDesc: {
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   exportTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
   },
   exportDesc: {

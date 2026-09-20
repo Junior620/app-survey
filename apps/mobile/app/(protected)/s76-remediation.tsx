@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -20,6 +20,7 @@ import {
   listCaseEvents,
   listRemediationCases,
   transitionRemediationCase,
+  acknowledgeSupervisor,
   DETECTION_STATUS_LABELS,
   SEVERITY_LABELS,
   REMEDIATION_STATUS_LABELS,
@@ -114,7 +115,7 @@ export default function S76RemediationScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="WORKSPACE REMÉDIATION"
+        title="Remédiation"
         subtitle="Machine à états + audit append-only"
         onBack={() => router.back()}
       />
@@ -159,9 +160,35 @@ export default function S76RemediationScreen() {
             </Text>
             <StatusChip status="encours" label={REMEDIATION_STATUS_LABELS[caseRow.status]} />
             {!caseRow.supervisorAckAt ? (
-              <Text style={styles.warn}>
-                Pas d’accusé serveur : ne pas afficher « superviseur notifié ».
-              </Text>
+              <>
+                <Text style={styles.warn}>
+                  Pas d’accusé superviseur local : ne pas afficher « superviseur notifié ».
+                </Text>
+                {(userRole === 'RESPONSABLE_DURABILITE' || userRole === 'ADMIN') && (
+                  <PrimaryButton
+                    title="Accuser réception (superviseur)"
+                    onPress={async () => {
+                      try {
+                        const updated = await acknowledgeSupervisor(
+                          accountId,
+                          caseRow.id,
+                          accountId,
+                          userRole ?? null
+                        );
+                        setCaseRow(updated);
+                        setEvents(await listCaseEvents(accountId, updated.id));
+                        Alert.alert(
+                          'Accusé enregistré',
+                          'Ack local + file sync. Le serveur confirmera après transfert.'
+                        );
+                      } catch (e) {
+                        Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec');
+                      }
+                    }}
+                    style={styles.btn}
+                  />
+                )}
+              </>
             ) : (
               <Text style={styles.ok}>Ack superviseur : {caseRow.supervisorAckAt}</Text>
             )}
@@ -226,7 +253,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '800' },
+  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
   prodTitle: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: 4 },
   ruleText: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: spacing.s },
   warn: { ...typography.presets.bodySmall, color: colors.brun, marginTop: spacing.s },
@@ -234,7 +261,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },

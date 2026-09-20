@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -50,7 +50,7 @@ export default function S29ControlesScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title="CONTRÔLES & VALIDATION"
+        title="Contrôles et validation"
         subtitle="Vérification de Cohérence & Complétude"
         onBack={() => router.back()}
       />
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   prodName: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   metaText: {
     ...typography.presets.bodySmall,
@@ -180,13 +180,13 @@ const styles = StyleSheet.create({
   scoreBoxValue: {
     ...typography.presets.titleSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 2,
   },
   scoreBoxWarning: {
     ...typography.presets.titleSmall,
     color: colors.erreur,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 2,
   },
   scoreDivider: {
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: spacing.s,
     marginBottom: spacing.s,
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   controlTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
     marginRight: spacing.s,
   },
