@@ -7,6 +7,7 @@ import { DemoModeBanner } from '../../../src/components/agent';
 import { colors, radius, spacing, typography } from '../../../src/theme';
 import { useDemoModeStore } from '../../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
+import { Routes, useSmartNavigation } from '../../../src/navigation';
 import { haptics } from '../../../src/utils/haptics';
 
 type LinkItem = {
@@ -14,13 +15,14 @@ type LinkItem = {
   title: string;
   subtitle: string;
   icon: SemanticIconName;
-  route?: string;
   available: boolean;
+  onPress: () => void;
 };
 
 export default function PlusScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const nav = useSmartNavigation();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const setDemoEnabled = useDemoModeStore((s) => s.setEnabled);
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
@@ -31,67 +33,65 @@ export default function PlusScreen() {
       title: t('settings.title'),
       subtitle: t('settings.languageSubtitle'),
       icon: 'language',
-      route: '/(protected)/settings',
       available: true,
+      onPress: () => nav.openSettings(),
     },
     {
       id: 'visites',
       title: t('surveys.title'),
       subtitle: t('surveys.available'),
       icon: 'visit',
-      route: '/(protected)/(agent)/visites',
       available: true,
+      onPress: () => nav.openVisites(),
     },
     {
       id: 'lots',
       title: t('lots.title'),
       subtitle: t('lots.cocoaLot'),
       icon: 'lotClosed',
-      route: '/(protected)/(agent)/lots',
       available: true,
+      onPress: () => router.navigate(Routes.agentLots as never),
     },
     {
       id: 'secteurs',
       title: t('farmers.sector'),
       subtitle: currentSiteId ? t('sites.modules') : t('sites.noSite'),
       icon: 'map',
-      route: currentSiteId
-        ? `/(protected)/secteurs?siteId=${currentSiteId}`
-        : undefined,
       available: !!currentSiteId,
+      onPress: () =>
+        router.push(`/(protected)/secteurs?siteId=${currentSiteId}` as never),
     },
     {
       id: 'formations',
       title: t('training.title'),
       subtitle: currentSiteId ? t('training.session') : t('sites.noSite'),
       icon: 'school',
-      route: currentSiteId
-        ? `/(protected)/formations?siteId=${currentSiteId}`
-        : undefined,
       available: !!currentSiteId,
+      onPress: () => void nav.openFormations(currentSiteId),
     },
     {
       id: 'sync-file',
       title: t('sync.title'),
       subtitle: t('sync.subtitle'),
       icon: 'sync',
-      route: '/(protected)/s50-file-sync',
       available: true,
+      onPress: () => router.push('/(protected)/s50-file-sync' as never),
     },
     {
       id: 'mapping',
       title: t('mapping.title'),
-      subtitle: t('common.soon'),
+      subtitle: t('mapping.info'),
       icon: 'parcel',
-      available: false,
+      available: true,
+      onPress: () => void nav.openMapping(currentSiteId, { origin: 'terrain' }),
     },
     {
       id: 'onboarding-review',
       title: t('onboarding.chooseLanguageTitle'),
       subtitle: t('common.brand'),
       icon: 'help',
-      route: '/(public)/s01-onboarding?review=1',
       available: true,
+      onPress: () => router.push('/(public)/s01-onboarding?review=1' as never),
     },
   ];
 
@@ -130,9 +130,9 @@ export default function PlusScreen() {
             key={l.id}
             disabled={!l.available}
             onPress={() => {
-              if (!l.available || !l.route) return;
+              if (!l.available) return;
               haptics.selection();
-              router.push(l.route as never);
+              l.onPress();
             }}
             style={[styles.row, !l.available && styles.disabled]}
           >

@@ -132,7 +132,6 @@ const ChoiceOption: React.FC<{
         ) : null}
         <Text
           style={[styles.choiceCardText, { color: textColor }, isSelected && styles.choiceCardTextSelected]}
-          numberOfLines={2}
         >
           {item.text}
         </Text>
@@ -180,7 +179,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.xs,
   },
   choiceCardText: {

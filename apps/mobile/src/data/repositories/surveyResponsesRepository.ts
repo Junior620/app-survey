@@ -1,6 +1,7 @@
 import type { SurveyAnswerMap } from '@appsurvey/shared';
 import { getDatabase, newId, nowIso } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
+import type { ResponseTree } from '../../survey/responseTree';
 
 export type SurveyResponseRecord = {
   id: string;
@@ -104,11 +105,18 @@ export async function saveSurveyResponse(input: {
   businessStatus: 'draft' | 'in_progress' | 'submitted' | 'preview';
   currentStep: number;
   answers: SurveyAnswerMap;
+  tree?: ResponseTree | null;
   meta?: Record<string, unknown>;
 }): Promise<SurveyResponseRecord> {
   const db = await getDatabase();
   const ts = nowIso();
-  const payload = { ...input.answers, meta: input.meta };
+  const payload = input.tree
+    ? {
+        answers: input.tree.answers,
+        rosters: input.tree.rosters,
+        meta: { ...input.meta, ...input.tree.meta, responseShape: 'hierarchical' },
+      }
+    : { ...input.answers, meta: input.meta };
   const id = input.responseId ?? newId();
 
   await db.withTransactionAsync(async () => {
@@ -198,6 +206,38 @@ export async function listResponsesForTemplate(
       ? `SELECT * FROM survey_responses WHERE account_id = ? AND template_key = ? ORDER BY updated_at DESC`
       : `SELECT * FROM survey_responses WHERE account_id = ? AND template_key = ? AND business_status != 'preview' ORDER BY updated_at DESC`,
     [accountId, templateKey]
+  );
+  return rows.map(mapRow);
+}
+
+/** Latest non-preview responses for one planteur (or other target). */
+export async function listResponsesForTarget(
+  accountId: string,
+  targetId: string
+): Promise<SurveyResponseRecord[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<Row>(
+    `SELECT * FROM survey_responses
+     WHERE account_id = ? AND target_id = ? AND business_status != 'preview'
+     ORDER BY updated_at DESC`,
+    [accountId, targetId]
+  );
+  return rows.map(mapRow);
+}
+
+/** Most recently updated in-progress / draft survey for "Continuer mon travail". */
+export async function listResumableSurveyResponses(
+  accountId: string,
+  limit = 5
+): Promise<SurveyResponseRecord[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<Row>(
+    `SELECT * FROM survey_responses
+     WHERE account_id = ?
+       AND business_status IN ('draft', 'in_progress')
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+    [accountId, limit]
   );
   return rows.map(mapRow);
 }

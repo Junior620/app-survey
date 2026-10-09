@@ -27,6 +27,13 @@
   ],
   "exclude": [
     "src/survey/surveyEngine.selftest.ts",
+    "src/survey/consentPolicy.test.ts",
+    "src/survey/annual/exploitationAgricole.test.ts",
+    "src/survey/annual/annualInputs.test.ts",
+    "src/survey/annual/annualCommercialisation.test.ts",
+    "src/survey/annual/annualAgriculturalPractices.test.ts",
+    "src/survey/annual/annualOtherAgriculturalActivities.test.ts",
+    "src/survey/household/householdSurvey.test.ts",
     "node_modules"
   ]
 }

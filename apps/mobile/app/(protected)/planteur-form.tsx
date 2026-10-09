@@ -25,6 +25,7 @@ import {
   type SecteurListItem,
 } from '../../src/data';
 import { haptics } from '../../src/utils/haptics';
+import { promptUnsavedExit, useSmartBack } from '../../src/navigation';
 
 export default function PlanteurFormScreen() {
   const router = useRouter();
@@ -57,6 +58,41 @@ export default function PlanteurFormScreen() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const defaultSecteurApplied = useRef(false);
+  const baselineRef = useRef<string | null>(null);
+  const skipDirtyRef = useRef(false);
+  const saveAndQuitRef = useRef<(() => Promise<void>) | null>(null);
+
+  const formSnapshot = () =>
+    JSON.stringify({
+      code,
+      nom,
+      prenoms,
+      telephone,
+      secteurId,
+      idAvail,
+      parcelleCode,
+      parcelleName,
+      superficie,
+    });
+
+  const leaveClean = () => {
+    skipDirtyRef.current = true;
+    router.back();
+  };
+
+  const { goBack } = useSmartBack({
+    onDirtyExit: () =>
+      promptUnsavedExit({
+        isDirty:
+          !skipDirtyRef.current &&
+          baselineRef.current != null &&
+          baselineRef.current !== formSnapshot(),
+        onDiscard: leaveClean,
+        onSaveQuit: () => {
+          void saveAndQuitRef.current?.();
+        },
+      }),
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +117,17 @@ export default function PlanteurFormScreen() {
             if (!alive) return;
             setSecteurs(s.filter((x) => x.status === 'active'));
             setSiteLabel(site ? `${site.name} (${site.code})` : p.siteId);
+            baselineRef.current = JSON.stringify({
+              code: p.code,
+              nom: p.nom,
+              prenoms: p.prenoms,
+              telephone: p.telephone || '',
+              secteurId: p.secteurId,
+              idAvail: (p.idDocumentAvailability as typeof idAvail) || 'not_collected',
+              parcelleCode: '',
+              parcelleName: '',
+              superficie: '',
+            });
           } finally {
             if (alive) setLoading(false);
           }
@@ -93,14 +140,31 @@ export default function PlanteurFormScreen() {
           if (!alive) return;
           const active = s.filter((x) => x.status === 'active');
           setSecteurs(active);
+          const defaultSecteur = active[0]?.id ?? null;
           if (active[0] && !defaultSecteurApplied.current) {
             setSecteurId(active[0].id);
             defaultSecteurApplied.current = true;
           }
           setSiteLabel(site ? `${site.name} (${site.code})` : siteIdParam);
           setLoading(false);
+          setTimeout(() => {
+            baselineRef.current = JSON.stringify({
+              code: '',
+              nom: '',
+              prenoms: '',
+              telephone: '',
+              secteurId: defaultSecteur,
+              idAvail: 'not_collected',
+              parcelleCode: '',
+              parcelleName: '',
+              superficie: '',
+            });
+          }, 0);
         } else {
           setLoading(false);
+          setTimeout(() => {
+            baselineRef.current = formSnapshot();
+          }, 0);
         }
       })();
       return () => {
@@ -157,11 +221,12 @@ export default function PlanteurFormScreen() {
           idDocumentAvailability: idAvail,
         });
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert(
           'Enregistré',
           'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.',
           [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: leaveClean },
         ]);
       } else {
         const p = await createPlanteur(accountId, {
@@ -184,6 +249,7 @@ export default function PlanteurFormScreen() {
           });
         }
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert('Planteur créé', 'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.', [
           {
             text: 'Ouvrir',
@@ -202,12 +268,14 @@ export default function PlanteurFormScreen() {
     }
   };
 
+  saveAndQuitRef.current = onSave;
+
   return (
     <AppScreen padding={0} backgroundColor={colors.fond} keyboardAvoiding>
       <AppHeader
         title={isEdit ? 'Modifier le planteur' : 'Nouveau planteur'}
         subtitle={isEdit ? 'Modification' : 'Nouveau planteur'}
-        onBack={() => router.back()}
+        onBack={goBack}
       />
       <KeyboardAwareScrollView
         style={styles.flex}

@@ -18,7 +18,9 @@ import { paperTheme, colors } from '../src/theme';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { useDemoModeStore } from '../src/stores/useDemoModeStore';
 import { useLocaleStore } from '../src/stores/useLocaleStore';
+import { useWorkContextStore } from '../src/stores/useWorkContextStore';
 import { i18n } from '../src/i18n';
+import '../src/clmrs/persistence/rulePacksRepository';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Native splash may already be hidden in Expo Go
@@ -28,6 +30,7 @@ export default function RootLayout() {
   const initializeAuth = useAuthStore((state) => state.initialize);
   const hydrateDemo = useDemoModeStore((state) => state.hydrate);
   const hydrateLocale = useLocaleStore((state) => state.hydrate);
+  const hydrateWorkCtx = useWorkContextStore((state) => state.hydrate);
   const localeHydrated = useLocaleStore((state) => state.hydrated);
   const [appReady, setAppReady] = useState(false);
 
@@ -42,13 +45,16 @@ export default function RootLayout() {
     hydrateLocale().catch((err) => {
       console.warn('[RootLayout] Locale hydrate error:', err);
     });
+    hydrateWorkCtx().catch((err) => {
+      console.warn('[RootLayout] Work context hydrate error:', err);
+    });
     hydrateDemo().catch((err) => {
       console.warn('[RootLayout] Demo mode hydrate error:', err);
     });
     initializeAuth().catch((err) => {
       console.warn('[RootLayout] Auth initialization error:', err);
     });
-  }, [hydrateLocale, hydrateDemo, initializeAuth]);
+  }, [hydrateLocale, hydrateWorkCtx, hydrateDemo, initializeAuth]);
 
   useEffect(() => {
     if ((fontsLoaded || fontError) && localeHydrated) {

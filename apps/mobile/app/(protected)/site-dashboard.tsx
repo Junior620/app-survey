@@ -19,6 +19,7 @@ import { useSiteContext } from '../../src/stores/useSiteContext';
 import { getSiteById, getSiteDashboardCounts, listSitesForAccount } from '../../src/data';
 import type { Site } from '@appsurvey/shared';
 import { roleHasPermission } from '@appsurvey/shared';
+import { useSmartBack, useSmartNavigation } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
 
 type ModuleLink = {
@@ -28,12 +29,15 @@ type ModuleLink = {
   icon: SemanticIconName;
   available: boolean;
   route?: string;
+  onPress?: () => void;
   badge?: string;
 };
 
 export default function SiteDashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const nav = useSmartNavigation();
+  const { goBack } = useSmartBack();
   const params = useLocalSearchParams<{ siteId?: string }>();
   const { user, profile, userRole, logout } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
@@ -120,7 +124,7 @@ export default function SiteDashboardScreen() {
       subtitle: t('farmers.registered', { count: counts.planteurs }),
       icon: 'producer',
       available: true,
-      route: '/(protected)/(agent)/planteurs',
+      onPress: () => void nav.openPlanteurs(),
     },
     {
       id: 'visites',
@@ -128,7 +132,7 @@ export default function SiteDashboardScreen() {
       subtitle: t('sites.visitsSubtitle'),
       icon: 'visit',
       available: true,
-      route: '/(protected)/(agent)/visites',
+      onPress: () => void nav.openVisites(),
     },
     {
       id: 'lots',
@@ -144,7 +148,7 @@ export default function SiteDashboardScreen() {
       subtitle: t('missions.count', { count: counts.missions }),
       icon: 'clipboard',
       available: true,
-      route: '/(protected)/(agent)/missions',
+      onPress: () => void nav.openMissions(),
     },
     {
       id: 'secteurs',
@@ -153,7 +157,6 @@ export default function SiteDashboardScreen() {
       icon: 'map',
       available: true,
       route: `/(protected)/secteurs?siteId=${siteId}`,
-      badge: counts.secteurs === 0 ? undefined : undefined,
     },
     {
       id: 'formations',
@@ -163,7 +166,7 @@ export default function SiteDashboardScreen() {
         : t('training.sitePrograms'),
       icon: 'school',
       available: true,
-      route: `/(protected)/formations?siteId=${siteId}`,
+      onPress: () => void nav.openFormations(siteId),
     },
     {
       id: 'enquetes',
@@ -171,7 +174,7 @@ export default function SiteDashboardScreen() {
       subtitle: t('surveys.availableLegacy'),
       icon: 'questionnaire',
       available: true,
-      route: `/(protected)/enquetes-disponibles?siteId=${siteId}`,
+      onPress: () => void nav.openEnquetes(siteId),
     },
     ...(canAdminQuestionnaires
       ? [
@@ -194,7 +197,7 @@ export default function SiteDashboardScreen() {
           : t('mapping.info'),
       icon: 'parcel',
       available: true,
-      route: '/(protected)/mapping-info',
+      onPress: () => void nav.openMapping(siteId),
     },
     {
       id: 'nouveau-planteur',
@@ -202,14 +205,14 @@ export default function SiteDashboardScreen() {
       subtitle: t('sites.registerLocal'),
       icon: 'add',
       available: true,
-      route: `/(protected)/nouveau-planteur?siteId=${siteId}`,
+      onPress: () => void nav.openPlanteurForm({ siteId: siteId! }),
     },
   ];
 
   if (!siteId) {
     return (
       <AppScreen padding={0} backgroundColor={colors.fond}>
-        <AppHeader title={t('sites.siteFallback')} onBack={() => router.back()} />
+        <AppHeader title={t('sites.siteFallback')} onBack={goBack} />
         <Text style={styles.missing}>{t('sites.noSite')}</Text>
       </AppScreen>
     );
@@ -222,7 +225,7 @@ export default function SiteDashboardScreen() {
         locality={site?.locality}
         canSwitchSite={canSwitchSite}
         canEditSite={canEditSite}
-        onBack={() => router.back()}
+        onBack={goBack}
         onChangeSite={() => setSwitcherOpen(true)}
         onEditSite={() => {
           router.push({
@@ -261,9 +264,13 @@ export default function SiteDashboardScreen() {
                 key={m.id}
                 disabled={!m.available}
                 onPress={() => {
-                  if (!m.available || !m.route) return;
+                  if (!m.available) return;
                   haptics.selection();
-                  router.push(m.route as never);
+                  if (m.onPress) {
+                    m.onPress();
+                    return;
+                  }
+                  if (m.route) router.push(m.route as never);
                 }}
                 style={({ pressed }) => [
                   styles.moduleRow,

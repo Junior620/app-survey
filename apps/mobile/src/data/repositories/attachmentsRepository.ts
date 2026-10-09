@@ -177,6 +177,7 @@ export async function cleanupOrphanAckedFiles(accountId: string): Promise<number
 }
 
 function guessExt(mime: string | null | undefined, uri: string): string {
+  if (mime?.includes('svg')) return '.svg';
   if (mime?.includes('png')) return '.png';
   if (mime?.includes('webp')) return '.webp';
   if (uri.toLowerCase().endsWith('.png')) return '.png';

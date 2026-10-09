@@ -29,10 +29,12 @@ import {
   type FormationRow,
   type SeanceRow,
 } from '../../src/data/repositories/formationsRepository';
+import { useSmartBack } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
 
 export default function FormationDetailScreen() {
   const router = useRouter();
+  const { goBack } = useSmartBack();
   const { formationId, siteId } = useLocalSearchParams<{
     formationId: string;
     siteId: string;
@@ -123,7 +125,7 @@ export default function FormationDetailScreen() {
       <AppHeader
         title={formation?.title || 'Formation'}
         subtitle="Programme et séances"
-        onBack={() => router.back()}
+        onBack={goBack}
         rightActions={
           formation && formation.status !== 'cancelled' ? (
             <Pressable

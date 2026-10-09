@@ -24,6 +24,7 @@ export type OutboxEntityType =
   | 'participation'
   | 'mission'
   | 'survey_response'
+  | 'survey_consent'
   | 'questionnaire'
   | 'questionnaire_version'
   | 'questionnaire_assignment'

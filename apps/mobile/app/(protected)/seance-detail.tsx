@@ -25,6 +25,7 @@ import { colors, radius, spacing, typography } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { useDemoModeStore } from '../../src/stores/useDemoModeStore';
 import type { AppRole } from '@appsurvey/shared';
+import { useTranslation } from 'react-i18next';
 import {
   addParticipant,
   closeSeance,
@@ -44,6 +45,7 @@ import {
   saveAttachmentFromUri,
   type AttachmentRow,
 } from '../../src/data/repositories/attachmentsRepository';
+import { useSmartBack } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
 
 const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string }[] = [
@@ -54,13 +56,17 @@ const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string }[] = [
 ];
 
 export default function SeanceDetailScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { goBack } = useSmartBack();
   const { seanceId, siteId } = useLocalSearchParams<{ seanceId: string; siteId: string }>();
   const { user, profile, userRole } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const accountId = user?.id || profile?.id || 'local-account';
   const agentId = accountId;
   const role = (userRole || profile?.role || 'AGENT_TERRAIN') as AppRole;
+  /** Field agents must capture live photos; gallery import is admin-only. */
+  const canImportFromGallery = role === 'ADMIN';
 
   const [seance, setSeance] = useState<SeanceRow | null>(null);
   const [participants, setParticipants] = useState<ParticipationRow[]>([]);
@@ -149,6 +155,10 @@ export default function SeanceDetailScreen() {
   };
 
   const pickFromLibrary = async () => {
+    if (!canImportFromGallery) {
+      Alert.alert(t('training.gallery'), t('training.galleryAdminOnly'));
+      return;
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Permission refusée', 'Autorisez l’accès aux photos.');
@@ -226,7 +236,7 @@ export default function SeanceDetailScreen() {
       <AppHeader
         title="Séance"
         subtitle="Présences et photos"
-        onBack={() => router.back()}
+        onBack={goBack}
         rightActions={
           seance && seance.status !== 'closed' ? (
             <Pressable
@@ -351,12 +361,18 @@ export default function SeanceDetailScreen() {
               Une photographie de groupe ne constitue pas une preuve individuelle de présence.
             </Text>
             <View style={styles.photoActions}>
-              <PrimaryButton title="Prendre une photo" onPress={takePhoto} style={styles.half} />
               <PrimaryButton
-                title="Galerie"
-                onPress={pickFromLibrary}
-                style={styles.half}
+                title={t('training.takePhoto')}
+                onPress={takePhoto}
+                style={canImportFromGallery ? styles.half : styles.full}
               />
+              {canImportFromGallery ? (
+                <PrimaryButton
+                  title={t('training.gallery')}
+                  onPress={pickFromLibrary}
+                  style={styles.half}
+                />
+              ) : null}
             </View>
 
             {previewUri ? (
@@ -513,6 +529,7 @@ const styles = StyleSheet.create({
   attTextOn: { color: colors.vertFonce, fontWeight: '700' },
   photoActions: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },
   half: { flex: 1 },
+  full: { flex: 1, alignSelf: 'stretch' },
   previewBox: { marginBottom: spacing.m },
   preview: {
     width: '100%',

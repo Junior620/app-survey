@@ -71,6 +71,8 @@ export default function ProtectedLayout() {
       <Stack.Screen name="nouveau-planteur" />
       <Stack.Screen name="planteur-form" />
       <Stack.Screen name="planteur-detail" />
+      <Stack.Screen name="planteur-enquetes" />
+      <Stack.Screen name="planteur-categorie" />
       <Stack.Screen name="parcelle-form" />
       <Stack.Screen name="formations" />
       <Stack.Screen name="formation-detail" />
@@ -82,6 +84,7 @@ export default function ProtectedLayout() {
       <Stack.Screen name="s21-sommaire" />
       <Stack.Screen name="s22-sections" />
       <Stack.Screen name="enquetes-disponibles" />
+      <Stack.Screen name="survey-consent" />
       <Stack.Screen name="survey-run" />
       <Stack.Screen name="s26-personnes" />
       <Stack.Screen name="s29-controles" />

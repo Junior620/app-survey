@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   StyleSheet,
+  Platform,
   StyleProp,
   ViewStyle,
   TextStyle,
@@ -16,6 +17,7 @@ export interface FormUnitFieldProps {
   value: string;
   onChangeText: (display: string, normalized: string) => void;
   unit: string;
+  numeric?: 'integer' | 'decimal';
   required?: boolean;
   error?: string;
   placeholder?: string;
@@ -31,6 +33,7 @@ export const FormUnitField: React.FC<FormUnitFieldProps> = ({
   value,
   onChangeText,
   unit,
+  numeric = 'decimal',
   required = false,
   error,
   placeholder,
@@ -51,16 +54,16 @@ export const FormUnitField: React.FC<FormUnitFieldProps> = ({
 
   const handleChange = useCallback(
     (raw: string) => {
-      const cleaned = raw.replace(/[^\d.,]/g, '');
+      const cleaned = numeric === 'integer' ? raw.replace(/[^\d]/g, '') : raw.replace(/[^\d.,]/g, '');
       const parts = cleaned.split(/[.,]/);
       let display = cleaned;
-      if (parts.length > 2) {
+      if (numeric !== 'integer' && parts.length > 2) {
         display = `${parts[0]},${parts.slice(1).join('')}`;
       }
       const normalized = display.replace(',', '.');
       onChangeText(display, normalized);
     },
-    [onChangeText]
+    [numeric, onChangeText]
   );
 
   return (
@@ -90,7 +93,12 @@ export const FormUnitField: React.FC<FormUnitFieldProps> = ({
           onChangeText={handleChange}
           placeholder={placeholder}
           placeholderTextColor={colors.horsLigne}
-          keyboardType="decimal-pad"
+          keyboardType={
+            Platform.OS === 'android' ? 'numeric' : numeric === 'integer' ? 'number-pad' : 'decimal-pad'
+          }
+          inputMode={numeric === 'integer' ? 'numeric' : 'decimal'}
+          autoCorrect={false}
+          showSoftInputOnFocus
           editable={editable}
           onFocus={() => {
             setIsFocused(true);
@@ -132,13 +140,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.sm,
   },
-  focused: {
-    shadowColor: colors.vert,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 1,
-  },
+  focused: Platform.select({
+    ios: {
+      shadowColor: colors.vert,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+    },
+    default: {},
+  }),
   input: {
     flex: 1,
     fontSize: 16,

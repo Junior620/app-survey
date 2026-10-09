@@ -12,8 +12,9 @@ export interface QuestionCardProps {
   required?: boolean;
   /** When true, show question ID discreetly instead of prominent badge cluster */
   showQuestionId?: boolean;
-  status?: 'completed' | 'pending' | 'error';
+  status?: 'completed' | 'pending' | 'error' | 'warning';
   errorMessage?: string;
+  warningMessage?: string;
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -28,6 +29,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   showQuestionId = true,
   status = 'pending',
   errorMessage,
+  warningMessage,
   children,
   style,
   testID,
@@ -44,6 +46,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             <SemanticIcon name="success" size={18} color={colors.vert} />
           ) : status === 'error' ? (
             <SemanticIcon name="error" size={18} color={colors.erreur} />
+          ) : status === 'warning' ? (
+            <SemanticIcon name="warning" size={18} color={colors.attention} />
           ) : null}
         </View>
 
@@ -64,6 +68,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       <View style={styles.content}>{children}</View>
 
       {errorMessage ? <ValidationMessage message={errorMessage} style={styles.errorWrap} /> : null}
+      {warningMessage ? (
+        <View style={styles.warningWrap}>
+          <SemanticIcon name="warning" size={16} color={colors.attention} />
+          <Text style={styles.warningText}>{warningMessage}</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -127,5 +137,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.erreur,
+  },
+  warningWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+    marginTop: spacing.s,
+  },
+  warningText: {
+    ...typography.presets.bodySmall,
+    color: colors.attention,
+    fontWeight: '600',
+    flex: 1,
   },
 });

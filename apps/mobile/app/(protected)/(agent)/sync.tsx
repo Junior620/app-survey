@@ -54,10 +54,14 @@ export default function AgentSyncScreen() {
     useCallback(() => {
       let alive = true;
       (async () => {
-        await refreshConnectivity();
-        if (!alive) return;
-        await reloadList();
-        if (alive && !demoEnabled) requestAutoSync(accountId);
+        try {
+          await refreshConnectivity();
+          if (!alive) return;
+          await reloadList();
+          if (alive && !demoEnabled) requestAutoSync(accountId);
+        } catch {
+          /* The queue screen retries on focus. A locked database must not reject uncaught. */
+        }
       })();
       return () => {
         alive = false;

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -20,6 +20,7 @@ import {
   updateParcelle,
 } from '../../src/data';
 import { haptics } from '../../src/utils/haptics';
+import { promptUnsavedExit, useSmartBack } from '../../src/navigation';
 
 export default function ParcelleFormScreen() {
   const router = useRouter();
@@ -43,6 +44,29 @@ export default function ParcelleFormScreen() {
   const [siteId, setSiteId] = useState(params.siteId || '');
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const baselineRef = useRef<string | null>(null);
+  const skipDirtyRef = useRef(false);
+  const saveAndQuitRef = useRef<(() => Promise<void>) | null>(null);
+
+  const formSnapshot = () => JSON.stringify({ code, name, superficie, annee });
+  const leaveClean = () => {
+    skipDirtyRef.current = true;
+    router.back();
+  };
+
+  const { goBack } = useSmartBack({
+    onDirtyExit: () =>
+      promptUnsavedExit({
+        isDirty:
+          !skipDirtyRef.current &&
+          baselineRef.current != null &&
+          baselineRef.current !== formSnapshot(),
+        onDiscard: leaveClean,
+        onSaveQuit: () => {
+          void saveAndQuitRef.current?.();
+        },
+      }),
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -62,6 +86,12 @@ export default function ParcelleFormScreen() {
           setAnnee(p.anneePlantation != null ? String(p.anneePlantation) : '');
           setPlanteurId(p.planteurId);
           setSiteId(p.siteId);
+          baselineRef.current = JSON.stringify({
+            code: p.code,
+            name: p.name,
+            superficie: p.superficieDeclareeHa != null ? String(p.superficieDeclareeHa) : '',
+            annee: p.anneePlantation != null ? String(p.anneePlantation) : '',
+          });
         } finally {
           if (alive) setLoading(false);
         }
@@ -71,6 +101,16 @@ export default function ParcelleFormScreen() {
       };
     }, [accountId, isEdit, params.parcelleId])
   );
+
+  // Create mode: baseline once on first paint
+  if (!isEdit && baselineRef.current === null) {
+    baselineRef.current = JSON.stringify({
+      code: '',
+      name: '',
+      superficie: '',
+      annee: '',
+    });
+  }
 
   const parseHa = () => {
     const ha = superficie.replace(',', '.').trim();
@@ -105,11 +145,12 @@ export default function ParcelleFormScreen() {
           anneePlantation: parseAnnee(),
         });
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert(
           'Enregistré',
           'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.',
           [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: leaveClean },
         ]);
       } else {
         await createParcelle(accountId, {
@@ -121,8 +162,9 @@ export default function ParcelleFormScreen() {
           anneePlantation: parseAnnee(),
         });
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert('Parcelle créée', 'Enregistrée localement (pending).', [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: leaveClean },
         ]);
       }
     } catch (e: unknown) {
@@ -131,6 +173,8 @@ export default function ParcelleFormScreen() {
       setSaving(false);
     }
   };
+
+  saveAndQuitRef.current = onSave;
 
   const onArchive = () => {
     if (!params.parcelleId) return;
@@ -143,7 +187,7 @@ export default function ParcelleFormScreen() {
           try {
             await archiveParcelle(accountId, params.parcelleId!);
             haptics.notificationSuccess();
-            router.back();
+            leaveClean();
           } catch (e: unknown) {
             Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec');
           }
@@ -157,7 +201,7 @@ export default function ParcelleFormScreen() {
       <AppHeader
         title={isEdit ? 'Modifier la parcelle' : 'Nouvelle parcelle'}
         subtitle="Déclaration locale (sans GPS)"
-        onBack={() => router.back()}
+        onBack={goBack}
       />
       <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {demoEnabled ? <DemoModeBanner /> : null}

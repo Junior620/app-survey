@@ -1,6 +1,6 @@
 import type { OutboxEntityType, OutboxOperation, SyncOutboxItem } from '@appsurvey/shared';
-import { requestAutoSync } from '../autoSync';
 import { getDatabase, newId, nowIso } from '../db';
+import { notifyOutboxChanged } from '../syncSignal';
 
 export function buildIdempotencyKey(
   entityType: string,
@@ -55,7 +55,7 @@ export async function enqueueOutboxInTx(
     ]
   );
   // After the surrounding transaction commits, push if online.
-  requestAutoSync(accountId);
+  notifyOutboxChanged(accountId);
   return id;
 }
 

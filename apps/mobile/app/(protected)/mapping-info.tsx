@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
 import { AppScreen, AppHeader, SemanticIcon } from '../../src/components/common';
 import { colors, radius, spacing, typography } from '../../src/theme';
+import { useSmartBack } from '../../src/navigation';
 
 /**
  * Mapping Phase 6 — readiness screen.
@@ -10,11 +10,11 @@ import { colors, radius, spacing, typography } from '../../src/theme';
  * GPS collection will be independent of basemap. Background continuity NOT promised.
  */
 export default function MappingInfoScreen() {
-  const router = useRouter();
+  const { goBack } = useSmartBack();
 
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
-      <AppHeader title="Mapping" subtitle="Capacités et limites" onBack={() => router.back()} />
+      <AppHeader title="Mapping" subtitle="Capacités et limites" onBack={goBack} />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.card}>
           <SemanticIcon name="parcel" size={28} color={colors.vert} />

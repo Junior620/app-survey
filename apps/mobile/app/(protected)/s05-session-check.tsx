@@ -9,22 +9,9 @@ import { colors, spacing, typography } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { formatFirstName, formatRoleLabel } from '../../src/utils/roleLabels';
 
-type PrepPhase = 'profile' | 'sites' | 'open' | 'ready' | 'timeout';
+import { destinationForRole } from '../../src/navigation/roleHome';
 
-function destinationForRole(role: string | null | undefined): string {
-  switch (role) {
-    case 'AGENT_TERRAIN':
-      return '/(protected)/(agent)';
-    case 'RESPONSABLE_DURABILITE':
-      return '/(protected)/(durabilite)';
-    case 'ADMIN':
-      return '/(protected)/(admin)';
-    case 'AUDITEUR':
-      return '/(protected)/(auditeur)';
-    default:
-      return role ? '/(protected)/(agent)' : '/(protected)/s07-access-denied';
-  }
-}
+type PrepPhase = 'profile' | 'sites' | 'open' | 'ready' | 'timeout';
 
 export default function S05SessionCheckScreen() {
   const { t } = useTranslation();

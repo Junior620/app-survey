@@ -3,7 +3,7 @@ import { isRealSupabaseClient } from '@appsurvey/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getDatabase, nowIso } from './db';
 import { supabaseClient } from '../services/authService';
-import { isSupabaseConfigured } from '../services/supabaseConfig';
+import { getSupabaseAnonKey, getSupabaseUrl, isSupabaseConfigured } from '../services/supabaseConfig';
 import { getStoredSession } from '../services/secureStore';
 import { absolutePathFor } from './repositories/attachmentsRepository';
 import {
@@ -112,18 +112,76 @@ async function uploadAttachmentBlob(params: {
     ? params.relativePath.slice(params.relativePath.lastIndexOf('.'))
     : '.bin';
   const storagePath = `${params.cooperativeId}/${params.accountId}/${params.attachmentId}${ext}`;
-  const fileUri = localPath.startsWith('file://') ? localPath : `file://${localPath}`;
-  const response = await fetch(fileUri);
-  if (!response.ok) {
-    throw new Error('Lecture du fichier local impossible.');
+  const contentType = resolveAttachmentContentType(params.mimeType, params.relativePath, null);
+  const baseUrl = getSupabaseUrl()?.replace(/\/$/, '');
+  const anonKey = getSupabaseAnonKey();
+  if (!baseUrl || !anonKey) throw new Error('Client Supabase non configuré.');
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (sessionError || !accessToken) {
+    throw new Error('Session expirée. Reconnectez-vous pour envoyer les pièces jointes.');
   }
-  const blob = await response.blob();
-  const { error } = await client.storage.from(ATTACHMENTS_BUCKET).upload(storagePath, blob, {
-    contentType: params.mimeType || blob.type || 'application/octet-stream',
-    upsert: true,
+  const endpoint = `${baseUrl}/storage/v1/object/${ATTACHMENTS_BUCKET}/${storagePath}`;
+  const result = await FileSystem.uploadAsync(endpoint, localPath, {
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: anonKey,
+      'Content-Type': contentType,
+      'x-upsert': 'true',
+    },
   });
-  if (error) throw new Error(error.message || 'Upload Storage impossible.');
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(storageErrorMessage(result.body, result.status));
+  }
   return storagePath;
+}
+
+function storageErrorMessage(body: string, status: number): string {
+  try {
+    const parsed = JSON.parse(body) as { message?: string; error?: string };
+    const message = parsed.message || parsed.error;
+    if (message) return message;
+  } catch {
+    // The storage API sometimes returns plain text.
+  }
+  const text = body.trim();
+  return text || `Upload Storage impossible (${status}).`;
+}
+
+/** Map Android/local quirks (often text/plain) to a Storage-allowed type. */
+function resolveAttachmentContentType(
+  declared: string | null | undefined,
+  relativePath: string,
+  blobType?: string | null
+): string {
+  const allowed = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+    'application/octet-stream',
+  ]);
+  const fromExt = (() => {
+    const lower = relativePath.toLowerCase();
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.txt') || lower.endsWith('.log')) return 'text/plain';
+    return null;
+  })();
+
+  for (const candidate of [declared, blobType, fromExt]) {
+    const mime = (candidate || '').trim().toLowerCase();
+    if (!mime) continue;
+    // Prefer real types; skip generic text/plain unless the file is actually .txt
+    if (mime === 'text/plain' && fromExt && fromExt !== 'text/plain') continue;
+    if (allowed.has(mime)) return mime;
+  }
+  return fromExt && allowed.has(fromExt) ? fromExt : 'application/octet-stream';
 }
 
 async function upsertMirror(
@@ -315,15 +373,18 @@ export async function pushPendingOutbox(
 
   for (const row of rows) {
     const attempts = (row.attempt_count || 0) + 1;
-    await markOutbox(row.id, 'sending', null, attempts);
     try {
+      await markOutbox(row.id, 'sending', null, attempts);
       await pushOne(row, accountId, coop);
       await markOutbox(row.id, 'acked', null, attempts);
       result.acked += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      await markOutbox(row.id, 'error', msg, attempts);
-      await markOutbox(row.id, 'pending', msg, attempts);
+      try {
+        await markOutbox(row.id, 'pending', msg, attempts);
+      } catch {
+        /* The row stays pending with its previous error if SQLite is briefly locked. */
+      }
       result.failed += 1;
       result.errors.push(`${row.entity_type}:${row.entity_id} — ${msg}`);
     }
@@ -338,8 +399,22 @@ export type FullSyncResult = {
   conflictCount: number;
 };
 
-/** Push then pull for the organisation. */
-export async function runFullSync(
+let syncQueue: Promise<void> = Promise.resolve();
+
+/** Push then pull for the organisation. One sync at a time, so SQLite is not locked by a second run. */
+export function runFullSync(
+  accountId: string,
+  cooperativeId?: string | null
+): Promise<FullSyncResult> {
+  const run = syncQueue.then(() => runFullSyncExclusive(accountId, cooperativeId));
+  syncQueue = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
+async function runFullSyncExclusive(
   accountId: string,
   cooperativeId?: string | null
 ): Promise<FullSyncResult> {

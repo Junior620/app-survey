@@ -23,16 +23,22 @@ import {
   ListSearchBar,
 } from '../../../src/components/common';
 import { SiteCard, DemoModeBanner, SyncStatusLine } from '../../../src/components/agent';
-import { colors, layout, spacing, typography } from '../../../src/theme';
+import { colors, layout, radius, spacing, typography } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
 import { useSyncStatusStore } from '../../../src/stores/useSyncStatusStore';
 import { useDemoModeStore } from '../../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
 import { ensureDemoSeed, listSitesForAccount, requestAutoSync } from '../../../src/data';
+import { purgeLocalSurveysOf8Oct2026 } from '../../../src/data/purgeLocalSurveysOf8Oct2026';
 import { refreshUiCounts } from '../../../src/data/autoSync';
 import { pullRemoteChanges, resolveCooperativeId } from '../../../src/data/syncService';
 import { listRemediationCases } from '../../../src/clmrs';
 import { DEFAULT_COOPERATIVE_ID } from '../../../src/data/syncConstants';
+import {
+  resolveResumeActivity,
+  useSmartNavigation,
+  type ResumeActivity,
+} from '../../../src/navigation';
 import { haptics } from '../../../src/utils/haptics';
 
 /** Avoid re-alerting the same returned cases every Sites focus. */
@@ -57,11 +63,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export default function SitesListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const nav = useSmartNavigation();
   const { user, profile, userRole, logout, isOffline } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const hydrateDemo = useDemoModeStore((s) => s.hydrate);
   const hydrateSite = useSiteContext((s) => s.hydrate);
-  const setCurrentSiteId = useSiteContext((s) => s.setCurrentSiteId);
 
   const accountId = user?.id || profile?.id || 'local-account';
   const role = (userRole || profile?.role || 'AGENT_TERRAIN') as AppRole;
@@ -69,6 +75,7 @@ export default function SitesListScreen() {
   const cooperativeId = resolveCooperativeId(profile?.cooperativeId);
 
   const [sites, setSites] = useState<SiteListItem[]>([]);
+  const [resumeActivity, setResumeActivity] = useState<ResumeActivity | null>(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,26 +153,36 @@ export default function SitesListScreen() {
     useCallback(() => {
       void load({ showSpinner: true, backgroundPull: true });
       void (async () => {
-        await refreshUiCounts(accountId);
-        if (demoEnabled || role !== 'AGENT_TERRAIN') return;
-        const returned = (await listRemediationCases(accountId, { openOnly: true })).filter(
-          (c) => c.status === 'RENVOYE_ENQUETEUR' && !alertedReturnedCaseIds.has(c.id)
-        );
-        if (returned.length === 0) return;
-        returned.forEach((c) => alertedReturnedCaseIds.add(c.id));
-        const first = returned[0];
-        Alert.alert(
-          t('sites.remediationReturnedTitle'),
-          t('sites.remediationReturnedBody', { count: returned.length }),
-          [
-            {
-              text: t('common.open'),
-              onPress: () =>
-                router.push(`/(protected)/s75-pourquoi-ce-signal?caseId=${first.id}` as never),
-            },
-            { text: t('common.later'), style: 'cancel' },
-          ]
-        );
+        try {
+          await refreshUiCounts(accountId);
+          try {
+            await purgeLocalSurveysOf8Oct2026(accountId);
+            setResumeActivity(await resolveResumeActivity(accountId));
+          } catch {
+            setResumeActivity(null);
+          }
+          if (demoEnabled || role !== 'AGENT_TERRAIN') return;
+          const returned = (await listRemediationCases(accountId, { openOnly: true })).filter(
+            (c) => c.status === 'RENVOYE_ENQUETEUR' && !alertedReturnedCaseIds.has(c.id)
+          );
+          if (returned.length === 0) return;
+          returned.forEach((c) => alertedReturnedCaseIds.add(c.id));
+          const first = returned[0];
+          Alert.alert(
+            t('sites.remediationReturnedTitle'),
+            t('sites.remediationReturnedBody', { count: returned.length }),
+            [
+              {
+                text: t('common.open'),
+                onPress: () =>
+                  router.push(`/(protected)/s75-pourquoi-ce-signal?caseId=${first.id}` as never),
+              },
+              { text: t('common.later'), style: 'cancel' },
+            ]
+          );
+        } catch {
+          /* A locked database must not reject this startup read. */
+        }
       })();
     }, [load, accountId, demoEnabled, role, router, t])
   );
@@ -205,7 +222,7 @@ export default function SitesListScreen() {
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
-        title={t('sites.title')}
+        title={t('tabs.home')}
         subtitle={t('sites.subtitle')}
         showBack={false}
         rightActions={
@@ -238,9 +255,32 @@ export default function SitesListScreen() {
         <SyncStatusLine
           state={syncLineState}
           pendingCount={pendingCount}
-          onPress={() => router.push('/(protected)/(agent)/sync' as never)}
+          onPress={() => nav.openSync()}
           style={styles.syncLine}
         />
+
+        {resumeActivity ? (
+          <View style={styles.continueCard}>
+            <View style={styles.continueTextCol}>
+              <Text style={styles.continueEyebrow}>{t('nav.continueWork')}</Text>
+              <Text style={styles.continueTitle} numberOfLines={2}>
+                {resumeActivity.title || t('nav.surveyInProgress')}
+              </Text>
+              <Text style={styles.continueMeta} numberOfLines={1}>
+                {resumeActivity.subtitle ||
+                  t('nav.stepProgress', { step: resumeActivity.currentStep + 1 })}
+              </Text>
+            </View>
+            <PrimaryButton
+              title={t('nav.resume')}
+              onPress={() => {
+                haptics.selection();
+                void nav.resume(resumeActivity);
+              }}
+              style={styles.continueBtn}
+            />
+          </View>
+        ) : null}
 
         {syncHint ? <Text style={styles.serviceText}>{syncHint}</Text> : null}
 
@@ -299,13 +339,9 @@ export default function SitesListScreen() {
             renderItem={({ item }) => (
               <SiteCard
                 site={item}
-                onPress={async () => {
+                onPress={() => {
                   haptics.selection();
-                  await setCurrentSiteId(item.id);
-                  router.push({
-                    pathname: '/(protected)/site-dashboard',
-                    params: { siteId: item.id },
-                  } as never);
+                  void nav.openSiteDashboard(item.id);
                 }}
               />
             )}
@@ -351,6 +387,38 @@ const styles = StyleSheet.create({
   },
   syncLine: {
     marginBottom: spacing.m,
+  },
+  continueCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    marginBottom: spacing.m,
+    padding: spacing.m,
+    backgroundColor: colors.blanc,
+    borderRadius: radius.m,
+    borderWidth: 1,
+    borderColor: colors.vert,
+  },
+  continueTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  continueEyebrow: {
+    ...typography.presets.labelSmall,
+    color: colors.vert,
+    marginBottom: 2,
+  },
+  continueTitle: {
+    ...typography.presets.titleMedium,
+    color: colors.texte,
+  },
+  continueMeta: {
+    ...typography.presets.meta,
+    color: colors.texteSecondaire,
+    marginTop: 2,
+  },
+  continueBtn: {
+    minWidth: 110,
   },
   list: {
     paddingBottom: spacing.xxl,

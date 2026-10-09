@@ -1,0 +1,12 @@
+export { Routes } from './routes';
+export type { AppRoutePath } from './routes';
+export type * from './types';
+export { isImmersivePath, IMMERSIVE_SEGMENTS } from './immersiveRoutes';
+export { destinationForRole } from './roleHome';
+export { resolveFallback, routeForOrigin } from './navigationFallbacks';
+export { useSmartNavigation } from './useSmartNavigation';
+export type { SmartNavigation } from './useSmartNavigation';
+export { useSmartBack } from './useSmartBack';
+export type { SmartBackOptions } from './useSmartBack';
+export { resolveResumeActivity } from './resolveResumeActivity';
+export { promptUnsavedExit } from './promptUnsavedExit';

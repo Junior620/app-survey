@@ -20,4 +20,5 @@ export * from './repositories/missionsRepository';
 export * from './repositories/questionnairesRepository';
 export * from './repositories/questionnaireAssignmentsRepository';
 export * from './repositories/surveyResponsesRepository';
+export * from './repositories/surveyConsentsRepository';
 export * from './attachmentsPolicy';

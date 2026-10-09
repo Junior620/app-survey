@@ -9,6 +9,7 @@ import type {
   QuestionType,
 } from '@appsurvey/shared';
 import { coerceLocalized, resolveLocalized } from '@appsurvey/shared';
+import { projectAnswerSource } from './specialValues';
 
 function validationMessage(
   custom: QuestionDefinition['validation']['customError'],
@@ -30,6 +31,8 @@ const SUPPORTED_QUESTION_TYPES: QuestionType[] = [
   'rating_scale',
   'info',
   'photo',
+  'list',
+  'linked_single_choice',
 ];
 
 export type EngineIssue = {
@@ -51,9 +54,14 @@ function isEmpty(value: SurveyAnswerValue): boolean {
 
 function asComparable(value: SurveyAnswerValue): string | number | boolean | null {
   if (value == null) return null;
+  if (typeof value === 'object' && 'kind' in value && value.kind === 'special') {
+    const projected = projectAnswerSource(value);
+    return typeof projected === 'string' || typeof projected === 'number' ? projected : null;
+  }
   if (typeof value === 'object' && 'other' in value) return value.text ?? null;
   if (Array.isArray(value)) return value.join(',');
-  return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  return null;
 }
 
 function evaluateCondition(condition: VisibilityCondition, answers: SurveyAnswerMap): boolean {
@@ -95,13 +103,17 @@ export function evaluateVisibility(
   return rules.logic === 'any' ? results.some(Boolean) : results.every(Boolean);
 }
 
+function questionsIn(sections: SectionDefinition[]): QuestionDefinition[] {
+  const out: QuestionDefinition[] = [];
+  for (const section of sections.slice().sort((a, b) => a.sortOrder - b.sortOrder)) {
+    out.push(...section.questions.slice().sort((a, b) => a.sortOrder - b.sortOrder));
+    if (section.sections?.length) out.push(...questionsIn(section.sections));
+  }
+  return out;
+}
+
 export function flattenQuestions(definition: QuestionnaireDefinitionSnapshot): QuestionDefinition[] {
-  return definition.sections
-    .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .flatMap((s) =>
-      s.questions.slice().sort((a, b) => a.sortOrder - b.sortOrder)
-    );
+  return questionsIn(definition.sections);
 }
 
 export function findUnsupportedTypes(definition: QuestionnaireDefinitionSnapshot): string[] {
@@ -277,7 +289,7 @@ export function validateDefinitionForPublish(
     issues.push({ code: 'no_sections', message: 'Ajoutez au moins une section.' });
   }
   const keys = new Set<string>();
-  for (const section of definition.sections) {
+  const visitSection = (section: SectionDefinition) => {
     if (!coerceLocalized(section.title).fr.trim()) {
       issues.push({
         sectionId: section.id,
@@ -286,7 +298,8 @@ export function validateDefinitionForPublish(
       });
     }
     const answerable = section.questions.filter((q) => q.type !== 'info');
-    if (!answerable.length) {
+    const hasChildren = (section.sections?.length ?? 0) > 0;
+    if (!answerable.length && !hasChildren) {
       issues.push({
         sectionId: section.id,
         code: 'empty_section',
@@ -334,7 +347,9 @@ export function validateDefinitionForPublish(
         }
       }
     }
-  }
+    for (const child of section.sections ?? []) visitSection(child);
+  };
+  for (const section of definition.sections) visitSection(section);
 
   // Second pass: visibility sources
   for (const q of flattenQuestions(definition)) {

@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   AppScreen,
   AppHeader,
@@ -29,10 +30,13 @@ import {
   type ParcelleListItem,
   type PlanteurDetail,
 } from '../../src/data';
+import { Routes, useSmartBack, useSmartNavigation } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
 
 export default function PlanteurDetailScreen() {
-  const router = useRouter();
+  const { t } = useTranslation();
+  const nav = useSmartNavigation();
+  const { goBack } = useSmartBack();
   const { planteurId } = useLocalSearchParams<{ planteurId: string }>();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
@@ -76,7 +80,7 @@ export default function PlanteurDetailScreen() {
           try {
             await archivePlanteur(accountId, planteurId);
             haptics.notificationSuccess();
-            router.replace('/(protected)/(agent)/planteurs' as never);
+            nav.returnToList(Routes.agentPlanteurs);
           } catch (e: unknown) {
             Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec');
           }
@@ -94,16 +98,17 @@ export default function PlanteurDetailScreen() {
             : 'Planteur'
         }
         subtitle={planteur?.code}
-        onBack={() => router.back()}
+        onBack={goBack}
         rightActions={
           planteur && planteur.status === 'active' ? (
             <Pressable
               onPress={() => {
                 haptics.selection();
-                router.push({
-                  pathname: '/(protected)/planteur-form',
-                  params: { planteurId: planteur.id, mode: 'edit', siteId: planteur.siteId },
-                } as never);
+                void nav.openPlanteurForm({
+                  planteurId: planteur.id,
+                  siteId: planteur.siteId,
+                  mode: 'edit',
+                });
               }}
               style={styles.headerBtn}
               accessibilityRole="button"
@@ -127,10 +132,37 @@ export default function PlanteurDetailScreen() {
         ) : (
           <>
             <View style={styles.card}>
-              <Text style={styles.meta}>Téléphone : {planteur.telephone || '—'}</Text>
-              <Text style={styles.meta}>Document : {planteur.idDocumentAvailability}</Text>
-              <Text style={styles.meta}>Statut : {planteur.status}</Text>
+              <Text style={styles.meta}>
+                {t('producerHub.phone')} : {planteur.telephone || '—'}
+              </Text>
+              <Text style={styles.meta}>
+                {t('producerHub.status')} : {planteur.status}
+              </Text>
+              <Text style={styles.meta}>
+                {parcelles.length === 0
+                  ? t('producerHub.parcelsNone')
+                  : t('producerHub.parcelsSummary', {
+                      count: parcelles.length,
+                      ha: parcelles
+                        .reduce((sum, p) => sum + (p.superficieDeclareeHa ?? 0), 0)
+                        .toFixed(1),
+                    })}
+              </Text>
             </View>
+
+            <Pressable
+              style={styles.hubRow}
+              accessibilityRole="button"
+              accessibilityLabel={t('producerHub.seeSurveys')}
+              onPress={() => {
+                haptics.selection();
+                void nav.openProducerSurveys(planteur.id, planteur.siteId);
+              }}
+            >
+              <SemanticIcon name="questionnaire" size={22} color={colors.vert} />
+              <Text style={styles.hubTitle}>{t('producerHub.seeSurveys')}</Text>
+              <SemanticIcon name="next" size={18} color={colors.texteSecondaire} />
+            </Pressable>
 
             <View style={styles.rowBetween}>
               <Text style={styles.section}>Parcelles</Text>
@@ -138,13 +170,10 @@ export default function PlanteurDetailScreen() {
                 <Pressable
                   onPress={() => {
                     haptics.selection();
-                    router.push({
-                      pathname: '/(protected)/parcelle-form',
-                      params: {
-                        planteurId: planteur.id,
-                        siteId: planteur.siteId,
-                      },
-                    } as never);
+                    void nav.openParcelle({
+                      planteurId: planteur.id,
+                      siteId: planteur.siteId,
+                    });
                   }}
                 >
                   <Text style={styles.link}>+ Ajouter</Text>
@@ -161,10 +190,10 @@ export default function PlanteurDetailScreen() {
                 onAction={
                   planteur.status === 'active'
                     ? () =>
-                        router.push({
-                          pathname: '/(protected)/parcelle-form',
-                          params: { planteurId: planteur.id, siteId: planteur.siteId },
-                        } as never)
+                        void nav.openParcelle({
+                          planteurId: planteur.id,
+                          siteId: planteur.siteId,
+                        })
                     : undefined
                 }
               />
@@ -175,15 +204,11 @@ export default function PlanteurDetailScreen() {
                   style={styles.parcelleCard}
                   onPress={() => {
                     haptics.selection();
-                    router.push({
-                      pathname: '/(protected)/parcelle-form',
-                      params: {
-                        parcelleId: p.id,
-                        planteurId: planteur.id,
-                        siteId: planteur.siteId,
-                        mode: 'edit',
-                      },
-                    } as never);
+                    void nav.openParcelle({
+                      planteurId: planteur.id,
+                      parcelleId: p.id,
+                      siteId: planteur.siteId,
+                    });
                   }}
                 >
                   <SemanticIcon name="map" size={20} color={colors.vert} />
@@ -216,7 +241,7 @@ export default function PlanteurDetailScreen() {
 
             <PrimaryButton
               title="Retour à la liste"
-              onPress={() => router.replace('/(protected)/(agent)/planteurs' as never)}
+              onPress={() => nav.returnToList(Routes.agentPlanteurs)}
               style={{ marginTop: spacing.m }}
             />
           </>
@@ -246,6 +271,24 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     marginBottom: spacing.m,
     gap: spacing.xs,
+  },
+  hubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    minHeight: 64,
+    backgroundColor: colors.blanc,
+    borderRadius: radius.m,
+    borderWidth: 1,
+    borderColor: colors.vert,
+    paddingHorizontal: spacing.m,
+    marginBottom: spacing.m,
+  },
+  hubTitle: {
+    ...typography.presets.titleMedium,
+    color: colors.texte,
+    flex: 1,
+    fontWeight: '700',
   },
   rowBetween: {
     flexDirection: 'row',

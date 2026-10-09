@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -16,6 +16,7 @@ import { useAuthStore } from '../../src/stores/useAuthStore';
 import {
   getPublishedDefinition,
   getSurveyResponse,
+  listResponsesForTarget,
   saveSurveyResponse,
 } from '../../src/data';
 import type { QuestionnaireDefinitionSnapshot, SurveyAnswerMap } from '@appsurvey/shared';
@@ -28,6 +29,14 @@ import {
 import { useLocaleStore } from '../../src/stores/useLocaleStore';
 import { useTranslation } from 'react-i18next';
 import { SurveyRenderer } from '../../src/survey/SurveyRenderer';
+import { SurveyTreeForm } from '../../src/survey/SurveyTreeForm';
+import { collectBlockingMessages } from '../../src/survey/ruleEngine';
+import {
+  emptyResponseTree,
+  projectActiveAnswers,
+  treeFromPayload,
+  type ResponseTree,
+} from '../../src/survey/responseTree';
 import {
   findUnsupportedTypes,
   pruneHiddenAnswers,
@@ -35,9 +44,22 @@ import {
 } from '../../src/survey/surveyEngine';
 import { submitSurveyWithClmrs, labelRule } from '../../src/clmrs';
 import { DETECTION_STATUS_LABELS, SEVERITY_LABELS } from '../../src/clmrs/labels';
+import { Routes, useSmartBack } from '../../src/navigation';
+import { CONSENT_POLICY } from '../../src/survey/consentPolicy';
+import { hasValidAcceptedConsent } from '../../src/data/repositories/surveyConsentsRepository';
+import {
+  EDUCATION_QUESTIONNAIRE_ID,
+  HOUSEHOLD_QUESTIONNAIRE_ID,
+} from '../../src/survey/household/householdSurvey';
+import {
+  educationLinksForHousehold,
+  selectHouseholdSource,
+} from '../../src/survey/household/householdLink';
+import { withDerivedSignals } from '../../src/survey/household/householdSignals';
 
 export default function SurveyRunScreen() {
   const { t } = useTranslation();
+  const { goBack } = useSmartBack();
   const locale = useLocaleStore((s) => s.displayLocale);
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -45,13 +67,25 @@ export default function SurveyRunScreen() {
     versionNumber: string;
     siteId: string;
     responseId?: string;
+    planteurId?: string;
   }>();
   const { user, profile, userRole } = useAuthStore();
   const accountId = user?.id || profile?.id || 'local-account';
 
   const [definition, setDefinition] = useState<QuestionnaireDefinitionSnapshot | null>(null);
   const [answers, setAnswers] = useState<SurveyAnswerMap>({});
+  const [tree, setTree] = useState<ResponseTree | null>(null);
+  const [linkedResponses, setLinkedResponses] = useState<
+    Array<{ questionnaireId: string; responseId: string; templateVersion: number; tree: ResponseTree }>
+  >([]);
   const [responseId, setResponseId] = useState<string | null>(params.responseId || null);
+  const skipAutosaveRef = useRef(true);
+  const treeRef = useRef<ResponseTree | null>(null);
+  const definitionRef = useRef<QuestionnaireDefinitionSnapshot | null>(null);
+  const responseIdRef = useRef<string | null>(params.responseId || null);
+  treeRef.current = tree;
+  definitionRef.current = definition;
+  responseIdRef.current = responseId;
   const [showErrors, setShowErrors] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +102,31 @@ export default function SurveyRunScreen() {
       (async () => {
         setLoading(true);
         try {
-          const versionNumber = Number(params.versionNumber);
+          if (params.planteurId && CONSENT_POLICY.requiresConsent) {
+            const accepted = await hasValidAcceptedConsent(
+              accountId,
+              params.planteurId,
+              params.questionnaireId!
+            );
+            if (!alive) return;
+            if (!accepted) {
+              router.replace({
+                pathname: Routes.surveyConsent,
+                params: {
+                  questionnaireId: params.questionnaireId,
+                  versionNumber: params.versionNumber,
+                  ...(params.siteId ? { siteId: params.siteId } : {}),
+                  planteurId: params.planteurId,
+                  ...(params.responseId ? { responseId: params.responseId } : {}),
+                },
+              } as never);
+              return;
+            }
+          }
+          const existing = params.responseId
+            ? await getSurveyResponse(accountId, params.responseId)
+            : null;
+          const versionNumber = Number(existing?.templateVersion || params.versionNumber);
           const def = await getPublishedDefinition(
             accountId,
             params.questionnaireId!,
@@ -87,15 +145,55 @@ export default function SurveyRunScreen() {
             return;
           }
           setDefinition(def);
-          if (params.responseId) {
-            const existing = await getSurveyResponse(accountId, params.responseId);
-            if (existing) {
-              const { meta: _m, ...rest } = existing.payload as SurveyAnswerMap & {
-                meta?: unknown;
-              };
-              setAnswers(rest);
-              setResponseId(existing.id);
+          if (existing) setResponseId(existing.id);
+          if (def.answerRetention === 'inactive_branch') {
+            let nextTree = treeFromPayload(existing?.payload as Record<string, unknown>) ?? emptyResponseTree();
+            let links: Array<{ questionnaireId: string; responseId: string; templateVersion: number; tree: ResponseTree }> = [];
+            if (params.planteurId && (def.requiresRoster || def.crossInstrumentFields?.edu)) {
+              const rows = await listResponsesForTarget(accountId, params.planteurId);
+              const asTree = (payload: Record<string, unknown>) => treeFromPayload(payload);
+              if (def.requiresRoster) {
+                const households = rows
+                  .filter((row) => row.templateKey.startsWith(HOUSEHOLD_QUESTIONNAIRE_ID))
+                  .flatMap((row) => {
+                    const linked = asTree(row.payload);
+                    return linked
+                      ? [{ responseId: row.id, templateVersion: Number(row.templateVersion), tree: linked }]
+                      : [];
+                  });
+                const prepared = selectHouseholdSource(nextTree, households);
+                nextTree = prepared.tree;
+                if (prepared.household) {
+                  links = [
+                    {
+                      questionnaireId: HOUSEHOLD_QUESTIONNAIRE_ID,
+                      responseId: prepared.household.responseId,
+                      templateVersion: prepared.household.templateVersion,
+                      tree: prepared.household.tree,
+                    },
+                  ];
+                }
+              } else if (existing) {
+                const education = rows
+                  .filter((row) => row.templateKey.startsWith(EDUCATION_QUESTIONNAIRE_ID))
+                  .flatMap((row) => {
+                    const linked = asTree(row.payload);
+                    return linked
+                      ? [{ responseId: row.id, templateVersion: Number(row.templateVersion), tree: linked }]
+                      : [];
+                  });
+                links = educationLinksForHousehold(existing.id, education);
+              }
             }
+            setLinkedResponses(links);
+            setTree(nextTree);
+          } else if (existing) {
+            const { meta: _m, answers: _a, rosters: _r, ...rest } = existing.payload as SurveyAnswerMap & {
+              meta?: unknown;
+              answers?: unknown;
+              rosters?: unknown;
+            };
+            setAnswers(rest);
           }
         } catch (e) {
           if (alive) setError(e instanceof Error ? e.message : 'Erreur');
@@ -108,8 +206,10 @@ export default function SurveyRunScreen() {
       };
     }, [
       accountId,
+      params.planteurId,
       params.questionnaireId,
       params.responseId,
+      params.siteId,
       params.versionNumber,
       router,
       userRole,
@@ -117,19 +217,24 @@ export default function SurveyRunScreen() {
   );
 
   const persistDraft = async (status: 'draft' | 'in_progress') => {
-    if (!definition) return null;
+    const currentDefinition = definitionRef.current;
+    if (!currentDefinition) return null;
     setSaveState('saving');
     try {
-      const pruned = pruneHiddenAnswers(definition, answers);
+      const hierarchical = currentDefinition.answerRetention === 'inactive_branch';
+      const currentTree = treeRef.current;
       const saved = await saveSurveyResponse({
         accountId,
-        responseId,
+        responseId: responseIdRef.current,
         siteId: params.siteId || null,
         templateKey: params.questionnaireId!,
-        templateVersion: String(definition.versionNumber),
+        templateVersion: String(currentDefinition.versionNumber),
+        targetType: params.planteurId ? 'planteur' : null,
+        targetId: params.planteurId ?? null,
         businessStatus: status,
         currentStep: 1,
-        answers: pruned,
+        answers: hierarchical && currentTree ? projectActiveAnswers(currentTree) : pruneHiddenAnswers(currentDefinition, answers),
+        tree: hierarchical ? currentTree : null,
       });
       setResponseId(saved.id);
       setSavedAt(
@@ -143,10 +248,25 @@ export default function SurveyRunScreen() {
     }
   };
 
+  useEffect(() => {
+    if (!tree || definition?.answerRetention !== 'inactive_branch') return;
+    if (skipAutosaveRef.current) {
+      skipAutosaveRef.current = false;
+      return;
+    }
+    const handle = setTimeout(() => {
+      void persistDraft('in_progress');
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [tree]);
+
   const runSubmit = async (consistencyConfirmed: boolean) => {
     if (!definition) return;
     setSaveState('saving');
-    const pruned = pruneHiddenAnswers(definition, answers);
+    const hierarchical = definition.answerRetention === 'inactive_branch' && tree;
+    const submittedTree =
+      hierarchical && definition.category === 'menage' ? withDerivedSignals(tree) : tree;
+    const pruned = hierarchical && submittedTree ? projectActiveAnswers(submittedTree) : pruneHiddenAnswers(definition, answers);
     try {
       const result = await submitSurveyWithClmrs({
         accountId,
@@ -154,10 +274,22 @@ export default function SurveyRunScreen() {
         siteId: params.siteId || null,
         templateKey: params.questionnaireId!,
         templateVersion: String(definition.versionNumber),
+        targetType: params.planteurId ? 'planteur' : null,
+        targetId: params.planteurId ?? null,
         answers: pruned,
+        meta:
+          hierarchical && submittedTree
+            ? {
+                responseShape: 'hierarchical',
+                answers: submittedTree.answers,
+                rosters: submittedTree.rosters,
+                ...submittedTree.meta,
+              }
+            : undefined,
         actorId: accountId,
         actorRole: userRole ?? null,
         consistencyConfirmed,
+        skipChildDetection: definition.childDetection === 'skip',
       });
 
       if (!result.ok) {
@@ -245,11 +377,11 @@ export default function SurveyRunScreen() {
   };
 
   return (
-    <AppScreen padding={0} backgroundColor={colors.fond}>
+    <AppScreen padding={0} backgroundColor={colors.fond} keyboardAvoiding={false}>
       <AppHeader
         title={definition ? resolveLocalized(definition.title, locale) : t('surveys.title')}
         subtitle={`v${params.versionNumber} · local`}
-        onBack={() => router.back()}
+        onBack={goBack}
         rightActions={<LocalSaveIndicator state={saveState} timeLabel={savedAt} />}
       />
       {loading ? (
@@ -271,15 +403,43 @@ export default function SurveyRunScreen() {
               {resolveLocalized(definition.instructions, locale)}
             </Text>
           ) : null}
-          <SurveyRenderer
-            definition={definition}
-            answers={answers}
-            showErrors={showErrors}
-            onChange={(key, value) => {
-              setAnswers((prev) => ({ ...prev, [key]: value }));
-              setSaveState('idle');
-            }}
-          />
+          {definition.answerRetention === 'inactive_branch' && tree ? (
+            <SurveyTreeForm
+              definition={definition}
+              tree={tree}
+              linkedResponses={linkedResponses}
+              onOpenRequiredSurvey={
+                definition.requiresRoster
+                  ? () => {
+                      router.push({
+                        pathname: Routes.surveyRun,
+                        params: {
+                          questionnaireId: `${HOUSEHOLD_QUESTIONNAIRE_ID}:${accountId}`,
+                          versionNumber: '1',
+                          ...(params.siteId ? { siteId: params.siteId } : {}),
+                          ...(params.planteurId ? { planteurId: params.planteurId } : {}),
+                        },
+                      } as never);
+                    }
+                  : undefined
+              }
+              showErrors={showErrors}
+              onChange={(next) => {
+                setTree(next);
+                setSaveState('idle');
+              }}
+            />
+          ) : (
+            <SurveyRenderer
+              definition={definition}
+              answers={answers}
+              showErrors={showErrors}
+              onChange={(key, value) => {
+                setAnswers((prev) => ({ ...prev, [key]: value }));
+                setSaveState('idle');
+              }}
+            />
+          )}
           <SecondaryButton
             title="Enregistrer brouillon"
             onPress={async () => {
@@ -291,11 +451,21 @@ export default function SurveyRunScreen() {
             title="Soumettre"
             onPress={async () => {
               setShowErrors(true);
-              const pruned = pruneHiddenAnswers(definition, answers);
-              const issues = validateAnswers(definition, pruned);
-              if (issues.length) {
-                Alert.alert('Contrôles', issues.map((i) => i.message).join('\n'));
-                return;
+              if (definition.answerRetention === 'inactive_branch' && tree) {
+                const issues = collectBlockingMessages(definition, tree, locale === 'en' ? 'en' : 'fr', {
+                  linkedResponses,
+                });
+                if (issues.length) {
+                  Alert.alert('Contrôles', issues.join('\n'));
+                  return;
+                }
+              } else {
+                const pruned = pruneHiddenAnswers(definition, answers);
+                const issues = validateAnswers(definition, pruned);
+                if (issues.length) {
+                  Alert.alert('Contrôles', issues.map((i) => i.message).join('\n'));
+                  return;
+                }
               }
               await runSubmit(false);
             }}

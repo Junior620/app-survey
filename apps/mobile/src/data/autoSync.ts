@@ -10,6 +10,11 @@ import {
   runFullSync,
 } from './syncService';
 import { listUnresolvedConflicts } from './syncConflicts';
+import { setOutboxSyncListener } from './syncSignal';
+
+setOutboxSyncListener((accountId) => {
+  requestAutoSync(accountId);
+});
 
 const DEBOUNCE_MS = 1200;
 const CONNECTIVITY_POLL_MS = 30_000;
@@ -40,11 +45,9 @@ async function countOutboxErrors(accountId: string): Promise<number> {
 }
 
 async function refreshUiCounts(accountId: string): Promise<number> {
-  const [pending, errorCount, conflicts] = await Promise.all([
-    countPending(accountId),
-    countOutboxErrors(accountId),
-    listUnresolvedConflicts(accountId),
-  ]);
+  const pending = await countPending(accountId);
+  const errorCount = await countOutboxErrors(accountId);
+  const conflicts = await listUnresolvedConflicts(accountId);
   useSyncStatusStore.getState().setCounts({
     pendingCount: pending,
     errorCount,

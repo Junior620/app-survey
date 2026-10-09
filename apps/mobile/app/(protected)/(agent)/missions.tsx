@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, EmptyState, SemanticIcon } from '../../../src/components/common';
 import { DemoModeBanner } from '../../../src/components/agent';
@@ -15,23 +15,28 @@ import { colors, radius, spacing, typography } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
 import { useDemoModeStore } from '../../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
+import { useListUiStateStore } from '../../../src/stores/useListUiStateStore';
 import {
   ensureDemoSeed,
   listMissionsForSite,
   type MissionRow,
   type MissionStatus,
 } from '../../../src/data';
+import { useSmartNavigation } from '../../../src/navigation';
 import { haptics } from '../../../src/utils/haptics';
 
 export default function MissionsScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const nav = useSmartNavigation();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
   const accountId = user?.id || profile?.id || 'local-account';
+  const listUi = useListUiStateStore((s) => s.get('missions'));
+  const setFilter = useListUiStateStore((s) => s.setFilter);
+  const setScrollOffset = useListUiStateStore((s) => s.setScrollOffset);
   const [rows, setRows] = useState<MissionRow[]>([]);
-  const [filter, setFilter] = useState<MissionStatus | 'all'>('todo');
+  const filter = (listUi.filter || 'todo') as MissionStatus | 'all';
   const [loading, setLoading] = useState(true);
 
   const openCreate = () => {
@@ -39,10 +44,7 @@ export default function MissionsScreen() {
       return;
     }
     haptics.selection();
-    router.push({
-      pathname: '/(protected)/mission-form',
-      params: { siteId: currentSiteId },
-    } as never);
+    void nav.openMissionForm({ siteId: currentSiteId, origin: 'activities' });
   };
 
   useFocusEffect(
@@ -99,7 +101,7 @@ export default function MissionsScreen() {
           {filters.map(([key, label]) => (
             <Pressable
               key={key}
-              onPress={() => setFilter(key)}
+              onPress={() => setFilter('missions', key)}
               style={[styles.filterChip, filter === key && styles.filterOn]}
             >
               <Text style={[styles.filterText, filter === key && styles.filterTextOn]}>
@@ -116,6 +118,9 @@ export default function MissionsScreen() {
             data={rows}
             keyExtractor={(i) => i.id}
             contentContainerStyle={{ paddingBottom: spacing.xxl }}
+            contentOffset={{ x: 0, y: listUi.scrollOffset }}
+            onScroll={(e) => setScrollOffset('missions', e.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={64}
             ListEmptyComponent={
               <EmptyState
                 semanticIcon="clipboard"
@@ -134,10 +139,7 @@ export default function MissionsScreen() {
                 style={styles.card}
                 onPress={() => {
                   haptics.selection();
-                  router.push({
-                    pathname: '/(protected)/mission-detail',
-                    params: { missionId: item.id },
-                  } as never);
+                  void nav.openMission(item.id, { origin: 'activities' });
                 }}
               >
                 <SemanticIcon name="clipboard" size={20} color={colors.vert} />

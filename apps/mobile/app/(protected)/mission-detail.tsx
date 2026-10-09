@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   AppScreen,
   AppHeader,
@@ -26,10 +26,12 @@ import {
   getMissionById,
   type MissionRow,
 } from '../../src/data';
+import { Routes, useSmartBack, useSmartNavigation } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
 
 export default function MissionDetailScreen() {
-  const router = useRouter();
+  const nav = useSmartNavigation();
+  const { goBack } = useSmartBack();
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
@@ -82,7 +84,7 @@ export default function MissionDetailScreen() {
           try {
             await cancelMission(accountId, missionId!);
             haptics.notificationSuccess();
-            router.replace('/(protected)/(agent)/missions' as never);
+            nav.returnToList(Routes.agentMissions);
           } catch (e: unknown) {
             Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec');
           }
@@ -96,16 +98,17 @@ export default function MissionDetailScreen() {
       <AppHeader
         title="Mission"
         subtitle={mission?.type}
-        onBack={() => router.back()}
+        onBack={goBack}
         rightActions={
           mission?.status === 'todo' ? (
             <Pressable
               onPress={() => {
                 haptics.selection();
-                router.push({
-                  pathname: '/(protected)/mission-form',
-                  params: { missionId: mission.id, mode: 'edit', siteId: mission.siteId },
-                } as never);
+                void nav.openMissionForm({
+                  missionId: mission.id,
+                  siteId: mission.siteId,
+                  origin: 'mission',
+                });
               }}
               style={styles.headerBtn}
               accessibilityLabel="Modifier"

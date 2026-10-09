@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 /** Schema migrations only — never seed sample data here. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 7;
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await db.execAsync('PRAGMA foreign_keys = ON;');
@@ -537,6 +537,48 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
           ON remediation_case_events(case_id, created_at);
       `);
       await db.execAsync(`PRAGMA user_version = 5`);
+    });
+  }
+
+  if (version < 6) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS survey_consents (
+          id TEXT PRIMARY KEY NOT NULL,
+          account_id TEXT NOT NULL,
+          planteur_id TEXT NOT NULL,
+          questionnaire_id TEXT NOT NULL,
+          version_number TEXT NOT NULL,
+          definition_id TEXT NOT NULL,
+          consent_version TEXT NOT NULL,
+          language TEXT NOT NULL,
+          status TEXT NOT NULL,
+          presented_confirmed INTEGER NOT NULL DEFAULT 0,
+          agent_id TEXT NOT NULL,
+          agent_name_snapshot TEXT NOT NULL,
+          decided_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          transfer_status TEXT NOT NULL DEFAULT 'pending',
+          revision INTEGER NOT NULL DEFAULT 1,
+          UNIQUE(account_id, planteur_id, questionnaire_id, consent_version)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_survey_consents_planteur
+          ON survey_consents(account_id, planteur_id, status);
+      `);
+      await db.execAsync(`PRAGMA user_version = 6`);
+    });
+  }
+
+  if (version < 7) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_name TEXT`);
+      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone_status TEXT`);
+      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone TEXT`);
+      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone_status TEXT`);
+      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone TEXT`);
+      await db.execAsync(`PRAGMA user_version = 7`);
     });
   }
 }

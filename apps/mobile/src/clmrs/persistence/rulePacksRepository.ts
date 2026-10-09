@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { getDatabase, newId, nowIso } from '../../data/db';
+import { getDatabase, newId, nowIso, setDatabaseSeed } from '../../data/db';
 import type { RulePack, FactMapping } from '@appsurvey/clmrs-engine';
 import { loadEmbeddedCmPack, validateRulePack } from '@appsurvey/clmrs-engine';
 import protectionEnfantV1 from '../mappings/protection_enfant_v1.json';
@@ -156,5 +156,7 @@ export async function assertPackImmutable(packId: string): Promise<void> {
     throw new Error(`Pack publié immuable: ${packId}. Créez une nouvelle version.`);
   }
 }
+
+setDatabaseSeed((db) => ensureClmrsSeeds(db));
 
 export { newId };

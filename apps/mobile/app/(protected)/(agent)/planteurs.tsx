@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, EmptyState, SemanticIcon } from '../../../src/components/common';
 import { DemoModeBanner } from '../../../src/components/agent';
@@ -21,6 +21,8 @@ import {
   listPlanteursForSite,
   type PlanteurListItem,
 } from '../../../src/data';
+import { useListUiStateStore } from '../../../src/stores/useListUiStateStore';
+import { useSmartNavigation } from '../../../src/navigation';
 import { haptics } from '../../../src/utils/haptics';
 
 function formatPlanteurName(item: { prenoms?: string | null; nom?: string | null; code?: string }) {
@@ -30,21 +32,23 @@ function formatPlanteurName(item: { prenoms?: string | null; nom?: string | null
 
 export default function PlanteursTabScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const nav = useSmartNavigation();
   const { user, profile } = useAuthStore();
   const demoEnabled = useDemoModeStore((s) => s.enabled);
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
   const accountId = user?.id || profile?.id || 'local-account';
+  const listUi = useListUiStateStore((s) => s.get('planteurs'));
+  const setQueryStore = useListUiStateStore((s) => s.setQuery);
+  const setScrollOffset = useListUiStateStore((s) => s.setScrollOffset);
   const [rows, setRows] = useState<PlanteurListItem[]>([]);
-  const [query, setQuery] = useState('');
+  const query = listUi.query;
   const [loading, setLoading] = useState(true);
+
+  const setQuery = (q: string) => setQueryStore('planteurs', q);
 
   const openCreate = () => {
     haptics.selection();
-    router.push({
-      pathname: '/(protected)/planteur-form',
-      params: currentSiteId ? { siteId: currentSiteId } : {},
-    } as never);
+    void nav.openPlanteurForm({ siteId: currentSiteId ?? undefined, origin: 'terrain' });
   };
 
   useFocusEffect(
@@ -106,6 +110,9 @@ export default function PlanteursTabScreen() {
           <FlatList
             data={rows}
             keyExtractor={(i) => i.id}
+            contentOffset={{ x: 0, y: listUi.scrollOffset }}
+            onScroll={(e) => setScrollOffset('planteurs', e.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={64}
             ListEmptyComponent={
               <EmptyState
                 semanticIcon="producer"
@@ -120,10 +127,10 @@ export default function PlanteursTabScreen() {
                 style={styles.card}
                 onPress={() => {
                   haptics.selection();
-                  router.push({
-                    pathname: '/(protected)/planteur-detail',
-                    params: { planteurId: item.id },
-                  } as never);
+                  void nav.openPlanteur(item.id, {
+                    siteId: item.siteId ?? currentSiteId ?? undefined,
+                    origin: 'terrain',
+                  });
                 }}
               >
                 <SemanticIcon name="producer" size={20} color={colors.vert} />

@@ -1,6 +1,7 @@
 /** Domain types for dynamic questionnaires / sondages */
 
 import type { LocalizedString } from '../i18n/localizedString';
+import type { Expr, ValueExpr } from './ruleAst';
 import { resolveLocalized, type DisplayLocale } from '../i18n/localizedString';
 
 export type { LocalizedString };
@@ -50,7 +51,9 @@ export type QuestionType =
   | 'yes_no'
   | 'rating_scale'
   | 'info'
-  | 'photo';
+  | 'photo'
+  | 'list'
+  | 'linked_single_choice';
 
 /** Supported by current mobile runtime — unknown types must block with update message */
 export const SUPPORTED_QUESTION_TYPES: QuestionType[] = [
@@ -65,6 +68,8 @@ export const SUPPORTED_QUESTION_TYPES: QuestionType[] = [
   'rating_scale',
   'info',
   'photo',
+  'list',
+  'linked_single_choice',
 ];
 
 export type VisibilityOperator =
@@ -118,6 +123,31 @@ export interface QuestionConfig {
   scaleMaxLabel?: LocalizedString;
   yesNoExtras?: Array<'unknown' | 'refused' | 'na'>;
   otherRequiresText?: boolean;
+  /** Paper integer → opaque option code. Used only by rules on this question. */
+  codeMap?: Record<string, string>;
+}
+
+export interface SpecialValueDef {
+  /** Opaque code. Strings keep a leading zero, as in 0777. */
+  code: number | string;
+  label: LocalizedString;
+}
+
+export interface AssertionRule {
+  id: string;
+  assertion: Expr;
+  message: string;
+  /** Kept in the snapshot but not evaluated as pass/fail. */
+  reviewRequired?: boolean;
+  dependency?: string;
+}
+
+export interface OptionSource {
+  type: 'roster';
+  rosterKey: string;
+  /** local = rows of the open response. external = another instrument or injected roster. */
+  scope?: 'local' | 'external';
+  questionnaireId?: string;
 }
 
 export interface QuestionDefinition {
@@ -133,6 +163,25 @@ export interface QuestionDefinition {
   visibility: VisibilityRules | null;
   options: QuestionOptionDef[];
   sortOrder: number;
+  enablement?: Expr | null;
+  /** Source enablement kept in the snapshot and not evaluated. */
+  enablementReview?: string;
+  validationRules?: AssertionRule[];
+  warningRules?: AssertionRule[];
+  optionFilter?: Expr | null;
+  specialValues?: SpecialValueDef[];
+  optionSource?: OptionSource | null;
+  /** Key inside snapshot.referencePeriods. Defaults to refperiod. */
+  referencePeriodKey?: string;
+}
+
+export interface SectionRepeat {
+  rosterKey: string;
+  sourceQuestionKey: string;
+  /** Context banner shown above each row, e.g. ENGRAIS ORGANIQUE. */
+  contextLabel?: string;
+  /** Active value shown under the row title, read from the current or linked tree. */
+  contextDetailKey?: string;
 }
 
 export interface SectionDefinition {
@@ -141,6 +190,10 @@ export interface SectionDefinition {
   sortOrder: number;
   visibility: VisibilityRules | null;
   questions: QuestionDefinition[];
+  sections?: SectionDefinition[];
+  repeat?: SectionRepeat | null;
+  /** Section is shown only when this assertion passes. Unresolved stays hidden. */
+  enablement?: Expr | null;
 }
 
 /** Immutable snapshot stored on publish */
@@ -155,6 +208,20 @@ export interface QuestionnaireDefinitionSnapshot {
   instructions: LocalizedString | null;
   confidentiality: LocalizedString;
   sections: SectionDefinition[];
+  answerRetention?: 'prune' | 'inactive_branch';
+  referencePeriods?: Record<string, string>;
+  computedVariables?: Array<{ stableKey: string; expression: ValueExpr }>;
+  reservations?: string[];
+  /** Field answered on another instrument, keyed by questionnaire id. */
+  crossInstrumentFields?: Record<string, string>;
+  /** Skip the synthetic child-detection path on submit. */
+  childDetection?: 'default' | 'skip';
+  /** Member rows come from another instrument. No fictional roster is created. */
+  requiresRoster?: {
+    rosterKey: string;
+    questionnaireId: string;
+    emptyMessage: string;
+  } | null;
 }
 
 export interface QuestionnaireListItem {
@@ -181,6 +248,7 @@ export type SurveyAnswerValue =
   | boolean
   | string[]
   | { other: true; text: string }
+  | { kind: 'special'; code: string }
   | null;
 
 export type SurveyAnswerMap = Record<string, SurveyAnswerValue>;
@@ -233,6 +301,8 @@ const QUESTION_TYPE_LABELS_FR: Record<QuestionType, string> = {
   rating_scale: 'Échelle',
   info: 'Information',
   photo: 'Photo',
+  list: 'Liste',
+  linked_single_choice: 'Choix lié',
 };
 
 const QUESTION_TYPE_LABELS_EN: Record<QuestionType, string> = {
@@ -247,6 +317,8 @@ const QUESTION_TYPE_LABELS_EN: Record<QuestionType, string> = {
   rating_scale: 'Scale',
   info: 'Information',
   photo: 'Photo',
+  list: 'List',
+  linked_single_choice: 'Linked choice',
 };
 
 /** @deprecated Prefer getQuestionTypeLabel(type, locale) */

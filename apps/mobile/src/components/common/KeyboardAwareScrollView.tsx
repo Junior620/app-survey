@@ -24,6 +24,7 @@ import { spacing } from '../../theme';
 
 type KeyboardScrollApi = {
   ensureVisible: (target: View | null) => void;
+  registerFocused: (target: View | null) => void;
   keyboardHeight: number;
   keyboardOpen: boolean;
 };
@@ -42,11 +43,14 @@ export function useEnsureFieldVisible() {
 
   const onFocusEnsureVisible = useCallback(() => {
     focused.current = true;
+    api?.registerFocused(ref.current);
+    if (Platform.OS === 'android') return;
     const run = () => api?.ensureVisible(ref.current);
-    setTimeout(run, Platform.OS === 'android' ? 160 : 60);
+    setTimeout(run, 60);
   }, [api]);
 
   useEffect(() => {
+    if (Platform.OS === 'android') return;
     if (!api?.keyboardOpen || !focused.current) return;
     const t = setTimeout(() => api.ensureVisible(ref.current), 40);
     return () => clearTimeout(t);
@@ -54,7 +58,8 @@ export function useEnsureFieldVisible() {
 
   const onBlurClear = useCallback(() => {
     focused.current = false;
-  }, []);
+    api?.registerFocused(null);
+  }, [api]);
 
   return {
     containerRef: ref,
@@ -84,6 +89,8 @@ export const KeyboardAwareScrollView = React.forwardRef<ScrollView, Props>(
     const insets = useSafeAreaInsets();
     const innerRef = useRef<ScrollView>(null);
     const scrollY = useRef(0);
+    const focusedRef = useRef<View | null>(null);
+    const keyboardTopRef = useRef(0);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     const setRefs = useCallback(
@@ -96,22 +103,64 @@ export const KeyboardAwareScrollView = React.forwardRef<ScrollView, Props>(
     );
 
     useEffect(() => {
-      const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-      const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-      const onShow = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'android') return;
+      const onShow = Keyboard.addListener('keyboardWillShow', (e) => {
         setKeyboardHeight(e.endCoordinates.height);
       });
-      const onHide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+      const onHide = Keyboard.addListener('keyboardWillHide', () => setKeyboardHeight(0));
       return () => {
         onShow.remove();
         onHide.remove();
       };
     }, []);
 
+    const scrollFocusedAboveKeyboard = useCallback(() => {
+      const target = focusedRef.current;
+      const keyboardTop = keyboardTopRef.current;
+      if (!target || !innerRef.current || keyboardTop <= 0) return;
+      target.measureInWindow((_x, y, _w, h) => {
+        if (!innerRef.current) return;
+        const visibleBottom = keyboardTop - keyboardGap;
+        const fieldBottom = y + h;
+        if (fieldBottom <= visibleBottom) return;
+        const delta = fieldBottom - visibleBottom + 8;
+        const nextY = Math.max(0, scrollY.current + delta);
+        scrollY.current = nextY;
+        innerRef.current.scrollTo({ y: nextY, animated: false });
+      });
+    }, [keyboardGap]);
+
+    useEffect(() => {
+      if (Platform.OS !== 'android') return;
+      let again: ReturnType<typeof setTimeout> | undefined;
+      let later: ReturnType<typeof setTimeout> | undefined;
+      const onShow = Keyboard.addListener('keyboardDidShow', (e) => {
+        keyboardTopRef.current = e.endCoordinates.screenY;
+        scrollFocusedAboveKeyboard();
+        again = setTimeout(scrollFocusedAboveKeyboard, 80);
+        later = setTimeout(scrollFocusedAboveKeyboard, 220);
+      });
+      const onHide = Keyboard.addListener('keyboardDidHide', () => {
+        keyboardTopRef.current = 0;
+      });
+      return () => {
+        if (again) clearTimeout(again);
+        if (later) clearTimeout(later);
+        onShow.remove();
+        onHide.remove();
+      };
+    }, [scrollFocusedAboveKeyboard]);
+
+    const registerFocused = useCallback((target: View | null) => {
+      focusedRef.current = target;
+      if (target && keyboardTopRef.current > 0) scrollFocusedAboveKeyboard();
+    }, [scrollFocusedAboveKeyboard]);
+
     const ensureVisible = useCallback(
       (target: View | null) => {
         if (!target || !innerRef.current) return;
-        const kb = keyboardHeight > 0 ? keyboardHeight : Platform.OS === 'android' ? 280 : 0;
+        const kb = keyboardHeight;
+        if (kb <= 0) return;
         target.measureInWindow((_x, y, _w, h) => {
           const windowH = Dimensions.get('window').height;
           const visibleBottom = windowH - kb - keyboardGap;
@@ -139,10 +188,11 @@ export const KeyboardAwareScrollView = React.forwardRef<ScrollView, Props>(
     const api = useMemo<KeyboardScrollApi>(
       () => ({
         ensureVisible,
+        registerFocused,
         keyboardHeight,
         keyboardOpen: keyboardHeight > 0,
       }),
-      [ensureVisible, keyboardHeight]
+      [ensureVisible, keyboardHeight, registerFocused]
     );
 
     const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -151,21 +201,23 @@ export const KeyboardAwareScrollView = React.forwardRef<ScrollView, Props>(
     };
 
     const bottomPad =
-      keyboardHeight > 0
-        ? Math.max(0, keyboardHeight - insets.bottom) + keyboardGap + spacing.l
-        : spacing.l;
+      Platform.OS === 'android'
+        ? 360
+        : keyboardHeight > 0
+          ? Math.max(0, keyboardHeight - insets.bottom) + keyboardGap + spacing.l
+          : spacing.l;
 
     return (
       <KeyboardScrollContext.Provider value={api}>
         <ScrollView
           ref={setRefs}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           onScroll={handleScroll}
-          contentContainerStyle={[{ paddingBottom: bottomPad, flexGrow: 1 }, contentContainerStyle]}
+          contentContainerStyle={[contentContainerStyle, { flexGrow: 1, paddingBottom: bottomPad }]}
           {...rest}
         >
           {children}

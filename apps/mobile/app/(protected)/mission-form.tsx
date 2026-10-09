@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -15,6 +15,7 @@ import { useDemoModeStore } from '../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../src/stores/useSiteContext';
 import { createMission, getMissionById, updateMission } from '../../src/data';
 import { haptics } from '../../src/utils/haptics';
+import { promptUnsavedExit, useSmartBack } from '../../src/navigation';
 
 const TYPES = ['visite', 'formation', 'mapping', 'enquete', 'autre'];
 const PRIORITIES = ['basse', 'normale', 'haute', 'urgente'];
@@ -36,11 +37,42 @@ export default function MissionFormScreen() {
   const [priority, setPriority] = useState('normale');
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const baselineRef = useRef<string | null>(null);
+  const skipDirtyRef = useRef(false);
+  const saveAndQuitRef = useRef<(() => Promise<void>) | null>(null);
+
+  const formSnapshot = () => JSON.stringify({ type, objectLabel, dueAt, priority });
+  const leaveClean = () => {
+    skipDirtyRef.current = true;
+    router.back();
+  };
+
+  const { goBack } = useSmartBack({
+    onDirtyExit: () =>
+      promptUnsavedExit({
+        isDirty:
+          !skipDirtyRef.current &&
+          baselineRef.current != null &&
+          baselineRef.current !== formSnapshot(),
+        onDiscard: leaveClean,
+        onSaveQuit: () => {
+          void saveAndQuitRef.current?.();
+        },
+      }),
+  });
 
   useFocusEffect(
     useCallback(() => {
       if (!isEdit || !params.missionId) {
         setLoading(false);
+        if (baselineRef.current === null) {
+          baselineRef.current = JSON.stringify({
+            type: 'visite',
+            objectLabel: '',
+            dueAt: '',
+            priority: 'normale',
+          });
+        }
         return;
       }
       let alive = true;
@@ -53,6 +85,12 @@ export default function MissionFormScreen() {
           setObjectLabel(m.objectLabel || '');
           setDueAt(m.dueAt || '');
           setPriority(m.priority);
+          baselineRef.current = JSON.stringify({
+            type: m.type,
+            objectLabel: m.objectLabel || '',
+            dueAt: m.dueAt || '',
+            priority: m.priority,
+          });
         } finally {
           if (alive) setLoading(false);
         }
@@ -82,11 +120,12 @@ export default function MissionFormScreen() {
           priority,
         });
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert(
           'Enregistré',
           'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.',
           [
-          { text: 'OK', onPress: () => router.back() },
+          { text: 'OK', onPress: leaveClean },
         ]);
       } else {
         const m = await createMission(accountId, {
@@ -98,6 +137,7 @@ export default function MissionFormScreen() {
           priority,
         });
         haptics.notificationSuccess();
+        skipDirtyRef.current = true;
         Alert.alert('Mission créée', 'Enregistrée localement (pending).', [
           {
             text: 'Ouvrir',
@@ -116,12 +156,14 @@ export default function MissionFormScreen() {
     }
   };
 
+  saveAndQuitRef.current = onSave;
+
   return (
     <AppScreen padding={0} backgroundColor={colors.fond}>
       <AppHeader
         title={isEdit ? 'Modifier la mission' : 'Nouvelle mission'}
         subtitle="Nouvelle mission"
-        onBack={() => router.back()}
+        onBack={goBack}
       />
       <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {demoEnabled ? <DemoModeBanner /> : null}
