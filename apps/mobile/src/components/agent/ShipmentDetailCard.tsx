@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   bordereauId: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   statusRow: {
     flexDirection: 'row',
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   statusText: {
     ...typography.presets.labelMedium,
     color: colors.attention,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   sealPill: {
     flexDirection: 'row',
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   sealText: {
     ...typography.presets.labelMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   field: {
     marginBottom: spacing.s,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   fieldValue: {
     ...typography.presets.bodyLarge,
     color: colors.texte,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
   },
   routeBlock: {
     backgroundColor: colors.surface2,

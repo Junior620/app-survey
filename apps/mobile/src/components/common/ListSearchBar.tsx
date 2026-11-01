@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TextInput, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { colors, spacing, typography, radius, layout } from '../../theme';
 import { SemanticIcon } from './icons';
+import { useTranslation } from 'react-i18next';
 
 export type ListSearchBarProps = {
   value: string;
@@ -14,10 +15,12 @@ export type ListSearchBarProps = {
 export function ListSearchBar({
   value,
   onChangeText,
-  placeholder = 'Rechercher',
+  placeholder,
   accessibilityLabel,
   style,
 }: ListSearchBarProps) {
+  const { t } = useTranslation();
+  const hint = placeholder ?? t('common.search');
   return (
     <View style={[styles.row, style]}>
       <SemanticIcon name="search" size={layout.iconSizeSm} color={colors.texteSecondaire} />
@@ -25,9 +28,9 @@ export function ListSearchBar({
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={hint}
         placeholderTextColor={colors.horsLigne}
-        accessibilityLabel={accessibilityLabel || placeholder}
+        accessibilityLabel={accessibilityLabel || hint}
         returnKeyType="search"
         clearButtonMode="while-editing"
       />

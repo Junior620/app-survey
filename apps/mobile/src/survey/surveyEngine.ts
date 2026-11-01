@@ -8,7 +8,8 @@ import type {
   VisibilityRules,
   QuestionType,
 } from '@appsurvey/shared';
-import { coerceLocalized, resolveLocalized } from '@appsurvey/shared';
+// Direct path keeps this engine free of the RN-bound barrel, so node tests can import it.
+import { coerceLocalized, resolveLocalized } from '@appsurvey/shared/src/i18n/localizedString';
 import { projectAnswerSource } from './specialValues';
 
 function validationMessage(
@@ -147,13 +148,18 @@ export function visibleQuestions(
   answers: SurveyAnswerMap
 ): QuestionDefinition[] {
   const out: QuestionDefinition[] = [];
-  for (const section of definition.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder)) {
-    if (!isSectionVisible(section, answers)) continue;
-    for (const q of section.questions.slice().sort((a, b) => a.sortOrder - b.sortOrder)) {
+  const bySortOrder = <T extends { sortOrder: number }>(items: T[]) =>
+    items.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  // Nested sections inherit their parent's visibility, like flattenQuestions walks them.
+  const visit = (section: SectionDefinition) => {
+    if (!isSectionVisible(section, answers)) return;
+    for (const q of bySortOrder(section.questions)) {
       if (q.type === 'info') continue;
       if (isQuestionVisible(q, section, answers)) out.push(q);
     }
-  }
+    for (const child of bySortOrder(section.sections ?? [])) visit(child);
+  };
+  for (const section of bySortOrder(definition.sections)) visit(section);
   return out;
 }
 
@@ -338,13 +344,6 @@ export function validateDefinitionForPublish(
           code: 'options',
           message: `« ${resolveLocalized(q.label, 'fr') || q.stableKey} » nécessite au moins 2 options.`,
         });
-      }
-      if (q.visibility?.conditions?.length) {
-        for (const c of q.visibility.conditions) {
-          if (!keys.has(c.sourceQuestionKey) && c.sourceQuestionKey !== q.stableKey) {
-            // source may be earlier — check all keys after full pass; defer
-          }
-        }
       }
     }
     for (const child of section.sections ?? []) visitSection(child);

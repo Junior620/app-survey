@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
     gap: spacing.s,
   },
   row: { flexDirection: 'row', gap: spacing.s, alignItems: 'flex-start' },
-  title: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
-  status: { ...typography.presets.labelSmall, color: colors.vert, marginTop: 4, fontWeight: '700' },
-  declined: { ...typography.presets.labelSmall, color: colors.erreur, marginTop: 4, fontWeight: '700' },
+  title: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
+  status: { ...typography.presets.labelSmall, color: colors.vert, marginTop: 4, fontFamily: typography.fontFamily.bold },
+  declined: { ...typography.presets.labelSmall, color: colors.erreur, marginTop: 4, fontFamily: typography.fontFamily.bold },
   meta: { ...typography.presets.meta, color: colors.texteSecondaire, marginTop: 2 },
   sync: { ...typography.presets.labelSmall, color: colors.attention, marginTop: 4 },
 });

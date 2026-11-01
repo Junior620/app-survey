@@ -10,3 +10,4 @@ export { useSmartBack } from './useSmartBack';
 export type { SmartBackOptions } from './useSmartBack';
 export { resolveResumeActivity } from './resolveResumeActivity';
 export { promptUnsavedExit } from './promptUnsavedExit';
+export { RoleGate, ROLE_AREAS } from './RoleGate';

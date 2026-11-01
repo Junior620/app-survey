@@ -225,19 +225,19 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   cardText: { flex: 1, minWidth: 0 },
-  title: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
+  title: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   desc: { ...typography.presets.bodySmall, color: colors.texteSecondaire, marginTop: 4 },
   meta: { ...typography.presets.meta, color: colors.texte, marginTop: spacing.s },
   status: {
     ...typography.presets.labelSmall,
     color: colors.vert,
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   declined: {
     ...typography.presets.labelSmall,
     color: colors.erreur,
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

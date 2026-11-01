@@ -1,5 +1,6 @@
 import type { SurveyAnswerMap } from '@appsurvey/shared';
 import {
+  answersMatchMapping,
   evaluateClmrs,
   extractFacts,
   hashFactsInput,
@@ -65,48 +66,44 @@ export async function submitSurveyWithClmrs(input: {
   let criticalAlert = false;
   let detectionPending = false;
 
-  let evaluation: HouseholdEvaluation;
-  if (input.skipChildDetection) {
-    evaluation = { children: [], dataQuality: { status: 'OK', flags: [] } } as unknown as HouseholdEvaluation;
-  } else {
-    await ensureClmrsSeeds();
-    const pack = await getPublishedRulePack();
-    const mapping = await getFactMapping('protection_enfant', '1');
-    const householdId =
-      input.householdId ||
-      input.targetId ||
-      input.responseId ||
-      `hh-${input.templateKey}`;
-    const facts = extractFacts(input.answers as Record<string, unknown>, mapping!, {
-      householdId,
-      siteId: input.siteId,
-      visitId: input.responseId ?? null,
-    });
-    evaluation = evaluateClmrs(facts, pack);
-    if (evaluation.dataQuality.status === 'BLOCKING' && !input.consistencyConfirmed) {
-      return {
-        ok: false,
-        reason: 'BLOCKING_DATA_QUALITY',
-        flags: evaluation.dataQuality.flags,
-        evaluation,
-      };
-    }
-  }
-
-  const pack = input.skipChildDetection ? null : await getPublishedRulePack();
-  const mapping = input.skipChildDetection ? null : await getFactMapping('protection_enfant', '1');
   const householdId =
     input.householdId ||
     input.targetId ||
     input.responseId ||
     `hh-${input.templateKey}`;
-  const facts = input.skipChildDetection
-    ? null
-    : extractFacts(input.answers as Record<string, unknown>, mapping!, {
+
+  let pack: Awaited<ReturnType<typeof getPublishedRulePack>> | null = null;
+  let facts: ReturnType<typeof extractFacts> | null = null;
+  let evaluation: HouseholdEvaluation = {
+    householdId,
+    maxSeverity: 'INFO',
+    children: [],
+    householdFlags: [],
+    dataQuality: { status: 'VALID', flags: [] },
+  };
+
+  if (!input.skipChildDetection) {
+    await ensureClmrsSeeds();
+    const mapping = await getFactMapping('protection_enfant', '1');
+    // Only child-protection instruments are scored (see answersMatchMapping).
+    if (mapping && answersMatchMapping(input.answers as Record<string, unknown>, mapping)) {
+      pack = await getPublishedRulePack();
+      facts = extractFacts(input.answers as Record<string, unknown>, mapping, {
         householdId,
         siteId: input.siteId,
         visitId: input.responseId ?? null,
       });
+      evaluation = evaluateClmrs(facts, pack);
+      if (evaluation.dataQuality.status === 'BLOCKING' && !input.consistencyConfirmed) {
+        return {
+          ok: false,
+          reason: 'BLOCKING_DATA_QUALITY',
+          flags: evaluation.dataQuality.flags,
+          evaluation,
+        };
+      }
+    }
+  }
 
   await db.withTransactionAsync(async () => {
     const existing = await db.getFirstAsync<{ id: string; revision: number }>(

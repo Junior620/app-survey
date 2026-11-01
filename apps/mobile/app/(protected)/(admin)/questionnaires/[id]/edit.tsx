@@ -334,14 +334,14 @@ const styles = StyleSheet.create({
   i18nFr: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   i18nEn: {
     ...typography.presets.bodySmall,
     color: colors.texteSecondaire,
     marginTop: 4,
   },
-  headerLink: { ...typography.presets.labelMedium, color: colors.vert, fontWeight: '700' },
+  headerLink: { ...typography.presets.labelMedium, color: colors.vert, fontFamily: typography.fontFamily.bold },
   section: {
     backgroundColor: colors.blanc,
     borderRadius: radius.m,
@@ -355,11 +355,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: 4,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s },
-  link: { ...typography.presets.labelSmall, color: colors.vert, fontWeight: '700' },
+  link: { ...typography.presets.labelSmall, color: colors.vert, fontFamily: typography.fontFamily.bold },
   question: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.bordure,
     gap: spacing.s,
   },
-  qLabel: { ...typography.presets.bodyMedium, color: colors.texte, fontWeight: '600' },
+  qLabel: { ...typography.presets.bodyMedium, color: colors.texte, fontFamily: typography.fontFamily.semibold },
   qMeta: { ...typography.presets.labelSmall, color: colors.horsLigne },
   qActions: { flexDirection: 'row', gap: spacing.s },
   renameInput: {

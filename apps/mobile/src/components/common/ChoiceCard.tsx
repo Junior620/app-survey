@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -35,22 +36,26 @@ export interface ChoiceCardProps {
   testID?: string;
 }
 
-const DEFAULT_CHOICES: ChoiceItem[] = [
-  { value: 'OUI', text: 'Oui', iconName: 'check' },
-  { value: 'NON', text: 'Non', iconName: 'close' },
-  { value: 'JE_NE_SAIS_PAS', text: 'Je ne sais pas', iconName: 'help' },
-  { value: 'REFUS', text: 'Refus', iconName: 'cancel' },
-];
+const DEFAULT_CHOICE_KEYS = [
+  { value: 'OUI', key: 'common.yes', iconName: 'check' },
+  { value: 'NON', key: 'common.no', iconName: 'close' },
+  { value: 'JE_NE_SAIS_PAS', key: 'common.dontKnow', iconName: 'help' },
+  { value: 'REFUS', key: 'common.refusal', iconName: 'cancel' },
+] as const;
 
 export const ChoiceCard: React.FC<ChoiceCardProps> = ({
   label,
   selectedValue,
   onSelect,
-  choices = DEFAULT_CHOICES,
+  choices: choicesProp,
   error,
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
+  const choices: ChoiceItem[] =
+    choicesProp ??
+    DEFAULT_CHOICE_KEYS.map((c) => ({ value: c.value, text: t(c.key), iconName: c.iconName }));
   const { width } = useWindowDimensions();
   const fontScale = PixelRatio.getFontScale();
   const stack = width < 360 || fontScale > 1.15;
@@ -147,7 +152,7 @@ const styles = StyleSheet.create({
   choiceGroupLabel: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xs,
   },
   choiceGrid: {
@@ -184,10 +189,10 @@ const styles = StyleSheet.create({
   },
   choiceCardText: {
     ...typography.presets.labelMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
   choiceCardTextSelected: {
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

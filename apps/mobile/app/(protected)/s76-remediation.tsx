@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -29,8 +29,10 @@ import {
   type RemediationCaseRecord,
   type RemediationCaseEvent,
 } from '../../src/clmrs';
+import { RoleGate, ROLE_AREAS } from '../../src/navigation';
+import { roleHasPermission } from '@appsurvey/shared';
 
-export default function S76RemediationScreen() {
+function S76RemediationScreenContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ caseId?: string }>();
   const { user, profile, userRole } = useAuthStore();
@@ -164,7 +166,7 @@ export default function S76RemediationScreen() {
                 <Text style={styles.warn}>
                   Pas d’accusé superviseur local : ne pas afficher « superviseur notifié ».
                 </Text>
-                {(userRole === 'RESPONSABLE_DURABILITE' || userRole === 'ADMIN') && (
+                {userRole && (roleHasPermission(userRole, 'protection.write') || userRole === 'ADMIN') && (
                   <PrimaryButton
                     title="Accuser réception (superviseur)"
                     onPress={async () => {
@@ -253,7 +255,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
+  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontFamily: typography.fontFamily.bold },
   prodTitle: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: 4 },
   ruleText: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: spacing.s },
   warn: { ...typography.presets.bodySmall, color: colors.brun, marginTop: spacing.s },
@@ -261,7 +263,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -270,7 +272,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.bordure,
     paddingVertical: spacing.s,
   },
-  eventMain: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '700' },
+  eventMain: { ...typography.presets.titleSmall, color: colors.texte, fontFamily: typography.fontFamily.bold },
   eventMeta: { ...typography.presets.bodySmall, color: colors.horsLigne },
   btn: { marginTop: spacing.s },
 });
+
+export default function S76RemediationScreen() {
+  return (
+    <RoleGate allow={ROLE_AREAS.protectionCase}>
+      <S76RemediationScreenContent />
+    </RoleGate>
+  );
+}

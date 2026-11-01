@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
   nodeRole: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   nodeId: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   nodeMeta: {
     ...typography.presets.bodySmall,
@@ -159,6 +159,6 @@ const styles = StyleSheet.create({
   currentLabel: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

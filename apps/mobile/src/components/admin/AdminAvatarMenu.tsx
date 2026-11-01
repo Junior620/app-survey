@@ -157,7 +157,7 @@ export function AdminAvatarButton({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.45)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -194,13 +194,13 @@ const styles = StyleSheet.create({
   avatarText: {
     ...typography.presets.titleMedium,
     color: colors.vertFonce,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
   profileText: { flex: 1 },
   name: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
   role: {
     ...typography.presets.bodySmall,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   menuLabel: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
   menuDestructive: {
@@ -241,6 +241,6 @@ const styles = StyleSheet.create({
   headerAvatarText: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
 });

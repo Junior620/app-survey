@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },

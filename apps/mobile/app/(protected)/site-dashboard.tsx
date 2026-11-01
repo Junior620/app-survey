@@ -21,6 +21,7 @@ import type { Site } from '@appsurvey/shared';
 import { roleHasPermission } from '@appsurvey/shared';
 import { useSmartBack, useSmartNavigation } from '../../src/navigation';
 import { haptics } from '../../src/utils/haptics';
+import { confirmLogout } from '../../src/utils/confirmLogout';
 
 type ModuleLink = {
   id: string;
@@ -113,6 +114,7 @@ export default function SiteDashboardScreen() {
   };
 
   const handleLogout = async () => {
+    if (!(await confirmLogout())) return;
     await logout();
     router.replace('/(public)/s02-login' as never);
   };
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   dataCaption: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xs,
   },
   kpiRow: {
@@ -342,7 +344,7 @@ const styles = StyleSheet.create({
   kpiValue: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   kpiLabel: {
     ...typography.presets.labelSmall,
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   moduleRow: {
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
   moduleTitle: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   moduleSub: {
     ...typography.presets.bodySmall,
@@ -392,6 +394,6 @@ const styles = StyleSheet.create({
   soon: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

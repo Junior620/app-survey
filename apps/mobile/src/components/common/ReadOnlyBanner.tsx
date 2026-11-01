@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.labelSmall,
     color: colors.info,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 0.5,
   },
   message: {

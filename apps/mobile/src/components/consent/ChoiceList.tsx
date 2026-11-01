@@ -46,6 +46,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
   },
   choiceOn: { borderColor: colors.vert, backgroundColor: colors.vert },
-  label: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
+  label: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   labelOn: { color: colors.blanc },
 });

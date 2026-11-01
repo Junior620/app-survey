@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   toggleBtnText: {
     ...typography.presets.labelSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flexShrink: 1,
   },
   toggleBtnTextActive: {

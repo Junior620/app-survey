@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   warningText: {
     color: colors.erreur,
     ...typography.presets.bodySmall,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -146,13 +146,13 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
     marginTop: 2,
   },
   roleValue: {
     ...typography.presets.titleMedium,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.brun,
     marginTop: 2,
   },

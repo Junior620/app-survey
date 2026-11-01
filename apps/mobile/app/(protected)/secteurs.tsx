@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, padding: spacing.m },
   section: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xs,
     color: colors.texte,
   },
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   cancelText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   card: {
     flexDirection: 'row',
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   meta: {

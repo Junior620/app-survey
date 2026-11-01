@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   section: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flexShrink: 1,
   },
   step: {

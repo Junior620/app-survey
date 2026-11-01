@@ -301,11 +301,11 @@ const styles = StyleSheet.create({
   summaryTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   summaryCount: {
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   personCard: {
     backgroundColor: colors.blanc,
@@ -325,12 +325,12 @@ const styles = StyleSheet.create({
   personName: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   personRelation: {
     ...typography.presets.bodySmall,
     color: colors.brun,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   deleteBtn: {
     padding: spacing.xxs,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   ageValue: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   ageDivider: {
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     ...typography.presets.bodySmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   schoolRow: {
     flexDirection: 'row',

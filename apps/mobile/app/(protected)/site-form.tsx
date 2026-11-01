@@ -250,6 +250,6 @@ const styles = StyleSheet.create({
   cancelText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

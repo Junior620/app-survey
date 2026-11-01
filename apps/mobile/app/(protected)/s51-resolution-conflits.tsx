@@ -18,12 +18,13 @@ import {
 } from '../../src/components/common';
 import { colors, spacing, typography, shadows } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
+import { listUnresolvedConflicts, type SyncConflict } from '../../src/data/syncConflicts';
 import {
-  listUnresolvedConflicts,
+  pullRemoteChanges,
   resolveConflict,
-  type SyncConflict,
-} from '../../src/data/syncConflicts';
-import { pullRemoteChanges, resolveCooperativeId } from '../../src/data/syncService';
+  resolveCooperativeId,
+} from '../../src/data/syncService';
+import { requestAutoSync } from '../../src/data/autoSync';
 import { haptics } from '../../src/utils/haptics';
 
 export default function S51ResolutionConflitsScreen() {
@@ -61,6 +62,7 @@ export default function S51ResolutionConflitsScreen() {
   const chooseLocal = async (c: SyncConflict) => {
     haptics.selection();
     await resolveConflict(c.id, 'resolved_local');
+    requestAutoSync(accountId);
     await reload();
     Alert.alert(
       'Conflit traité',
@@ -147,7 +149,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   detail: {
     ...typography.presets.bodySmall,
@@ -177,6 +179,6 @@ const styles = StyleSheet.create({
   actionText: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

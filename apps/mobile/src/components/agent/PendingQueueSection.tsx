@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   card: {
     backgroundColor: colors.blanc,
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   rowCount: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flexShrink: 0,
   },
 });

@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   meta: {
     ...typography.presets.bodySmall,
@@ -90,6 +90,6 @@ const styles = StyleSheet.create({
   ctaText: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

@@ -29,7 +29,7 @@ export const paperTheme = {
     surfaceVariant: colors.surface2,
     onSurfaceVariant: colors.texteSecondaire,
 
-    outline: colors.bordure,
+    outline: colors.outlineStrong,
     outlineVariant: colors.bordure,
 
     error: colors.erreur,

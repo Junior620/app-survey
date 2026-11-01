@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  answersMatchMapping,
   evaluateClmrs,
   extractFacts,
   hashFactsInput,
@@ -305,5 +306,17 @@ describe('GPS', () => {
       eval_.householdFlags.some((x) => x.code === 'GPS_UNAVAILABLE') ||
         eval_.dataQuality.flags.some((x) => x.code === 'GPS_UNAVAILABLE')
     );
+  });
+});
+
+describe('answersMatchMapping', () => {
+  it('ignores instruments without child-protection fields', () => {
+    assert.equal(answersMatchMapping({ ann_superficie: 3, ann_culture: 'cacao' }, mapping), false);
+    assert.equal(answersMatchMapping({ pe_nb_enfants: '' }, mapping), false);
+  });
+
+  it('accepts a protection survey, even with no child listed', () => {
+    assert.equal(answersMatchMapping({ pe_nb_enfants: 0 }, mapping), true);
+    assert.equal(answersMatchMapping({ pe_enfant_age: 9 }, mapping), true);
   });
 });

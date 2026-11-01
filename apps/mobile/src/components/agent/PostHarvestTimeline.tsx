@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   dateRow: {
     flexDirection: 'row',

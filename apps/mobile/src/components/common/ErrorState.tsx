@@ -37,7 +37,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
       {onRetry ? (
         <View style={styles.buttonContainer}>
-          <PrimaryButton title={resolvedRetry} onPress={onRetry} icon="refresh" />
+          <PrimaryButton title={resolvedRetry} onPress={onRetry} semanticIcon="refresh" />
         </View>
       ) : null}
     </View>
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleMedium,
     color: colors.critique,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },

@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.labelSmall,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 0.5,
     marginBottom: 2,
   },

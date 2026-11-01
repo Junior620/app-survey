@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   statValue: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   statLabel: {
     ...typography.presets.bodySmall,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   conflictBtn: { marginBottom: spacing.m },
   section: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
     marginTop: spacing.l,
     marginBottom: spacing.s,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     ...typography.presets.labelMedium,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   rowMeta: {
@@ -250,6 +250,6 @@ const styles = StyleSheet.create({
     color: colors.vert,
     textAlign: 'center',
     marginTop: spacing.l,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

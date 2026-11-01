@@ -19,7 +19,7 @@ export default function S04ResetInstructionsScreen() {
   const [resendStatus, setResendStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (countdown > 0) {
       timer = setTimeout(() => setCountdown(countdown - 1), 1000);
     } else {
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
   },
   emailHighlight: {
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
   },
   infoBox: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   resendSuccessText: {
     color: colors.vert,
     ...typography.presets.bodySmall,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     textAlign: 'center',
   },
   resendArea: {

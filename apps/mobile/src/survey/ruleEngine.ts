@@ -885,7 +885,7 @@ export function collectBlockingMessages(
     const missingValue = self == null || self === '';
     if (question.required && question.type !== 'info' && question.type !== 'list' && question.type !== 'multi_choice' && missingValue) {
       const label = fillPlaceholders(resolveLocalized(question.label, locale), definition, tree, path, question.referencePeriodKey, locale);
-      messages.push(`${label} : réponse obligatoire.`);
+      messages.push(locale === 'en' ? `${label}: answer required.` : `${label} : réponse obligatoire.`);
     }
     messages.push(...collectUserFacing(definition, tree, path, question, 'validationRules', locale, extras));
   };

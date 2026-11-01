@@ -166,11 +166,10 @@ export async function createUserAccount(input: CreateUserInput): Promise<UserPro
   const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
     email,
     password,
+    // Role and cooperative are set by the admin update below; the server ignores them on sign-up.
     options: {
       data: {
         full_name: fullName,
-        role: input.role,
-        cooperative_id: creatorCoop,
       },
     },
   });

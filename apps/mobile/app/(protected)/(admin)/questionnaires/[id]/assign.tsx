@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.vert, borderColor: colors.vert },
   chipText: { ...typography.presets.labelSmall, color: colors.texte },
-  chipTextOn: { color: colors.blanc, fontWeight: '700' },
+  chipTextOn: { color: colors.blanc, fontFamily: typography.fontFamily.bold },
   siteRow: {
     backgroundColor: colors.blanc,
     borderRadius: radius.s,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     borderColor: colors.bordure,
   },
   siteRowOn: { borderColor: colors.vert, backgroundColor: colors.surface2 },
-  siteName: { ...typography.presets.bodyMedium, color: colors.texte, fontWeight: '700' },
+  siteName: { ...typography.presets.bodyMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   siteNameOn: { color: colors.vert },
   siteMeta: { ...typography.presets.labelSmall, color: colors.horsLigne },
 });

@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   name: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   code: {
     ...typography.presets.bodySmall,

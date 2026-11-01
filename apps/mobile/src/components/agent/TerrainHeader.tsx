@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleLarge,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   subtitle: {
     ...typography.presets.bodySmall,
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
   avatarText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   chipText: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   chipTextActive: {
     color: colors.blanc,

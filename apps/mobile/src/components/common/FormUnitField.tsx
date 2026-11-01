@@ -125,12 +125,12 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xxs,
   },
   asterisk: {
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   inputRow: {
     minHeight: 52,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '400',
+    fontFamily: typography.fontFamily.regular,
     color: colors.texte,
     paddingVertical: 10,
     paddingHorizontal: 0,
@@ -161,13 +161,13 @@ const styles = StyleSheet.create({
   unit: {
     ...typography.presets.labelLarge,
     color: colors.texteSecondaire,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginLeft: spacing.xs,
   },
   error: {
     ...typography.presets.bodySmall,
     color: colors.erreur,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
     marginTop: spacing.xxs,
   },
 });

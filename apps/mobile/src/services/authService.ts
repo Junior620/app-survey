@@ -5,7 +5,12 @@ import type {
   UserProfile,
   UserRole,
 } from '@appsurvey/shared';
-import { createSupabaseClient, isRealSupabaseClient, type AppSupabaseClient } from '@appsurvey/shared';
+import {
+  createSupabaseClient,
+  DEFAULT_ROLE_PERMISSIONS,
+  isRealSupabaseClient,
+  type AppSupabaseClient,
+} from '@appsurvey/shared';
 import {
   clearStoredSession,
   saveStoredSession,
@@ -22,12 +27,7 @@ export const supabaseClient: AppSupabaseClient = createSupabaseClient(secureStor
   anonKey: getSupabaseAnonKey(),
 });
 
-const VALID_ROLES: UserRole[] = [
-  'AGENT_TERRAIN',
-  'RESPONSABLE_DURABILITE',
-  'ADMIN',
-  'AUDITEUR',
-];
+const VALID_ROLES = Object.keys(DEFAULT_ROLE_PERMISSIONS) as UserRole[];
 
 function mapProfileRow(row: Record<string, unknown>): UserProfile {
   const role = String(row.role || '') as UserRole;
@@ -47,7 +47,7 @@ function mapProfileRow(row: Record<string, unknown>): UserProfile {
   };
 }
 
-/** Demo profiles — only used when Supabase is not configured */
+/** Demo profiles — development builds without Supabase only (see loginMock). */
 const DEMO_PROFILES: Record<string, { profile: UserProfile; passwordHash: string }> = {
   'agent@scpb.ci': {
     passwordHash: 'SCPB2026!',
@@ -230,7 +230,12 @@ export class AuthService {
       }
     }
 
-    // —— Mock local fallback ——
+    // —— Mock local fallback (development only) ——
+    if (!__DEV__) {
+      throw new Error(
+        'Serveur de connexion non configuré dans cette version. Contactez un administrateur.'
+      );
+    }
     return AuthService.loginMock(credentials);
   }
 
@@ -255,9 +260,9 @@ export class AuthService {
       let region = 'Soubré / Haut-Sassandra';
       let cooperativeId: string | undefined = 'COOP-SOUBRE-01';
 
-      if (emailLower.includes('admin') || emailLower === 'christian.momo@ste-scpb.com') {
+      if (emailLower.includes('admin')) {
         role = 'ADMIN';
-        fullName = 'Christian Momo';
+        fullName = 'Administrateur Démo';
         region = 'Siège Social';
         cooperativeId = undefined;
       } else if (emailLower.includes('durab') || emailLower.includes('resp')) {

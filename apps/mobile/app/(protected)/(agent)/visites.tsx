@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   filterText: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   filterTextActive: {
     color: colors.blanc,

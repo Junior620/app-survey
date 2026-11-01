@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   value: {
     ...typography.presets.bodyMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
     textAlign: 'right',
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   testLabel: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   testDisabled: {
     color: colors.texteSecondaire,

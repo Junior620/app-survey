@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Card, Chip, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { SemanticIcon } from '../../src/components/common';
-import { colors } from '../../src/theme';
+import { colors, typography } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { formatRoleLabel } from '../../src/utils/roleLabels';
 
@@ -135,13 +135,13 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
     letterSpacing: 1,
   },
   welcomeText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   roleChip: {
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   roleChipText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
   },
   offlineBanner: {
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   offlineBannerText: {
     color: colors.attention,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     fontSize: 12,
     textAlign: 'center',
   },
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
     marginBottom: 6,
   },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   actionButtonLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.blanc,
   },
   draftButton: {

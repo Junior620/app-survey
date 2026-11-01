@@ -44,7 +44,7 @@ import {
 } from '../../src/survey/surveyEngine';
 import { submitSurveyWithClmrs, labelRule } from '../../src/clmrs';
 import { DETECTION_STATUS_LABELS, SEVERITY_LABELS } from '../../src/clmrs/labels';
-import { Routes, useSmartBack } from '../../src/navigation';
+import { promptUnsavedExit, Routes, useSmartBack } from '../../src/navigation';
 import { CONSENT_POLICY } from '../../src/survey/consentPolicy';
 import { hasValidAcceptedConsent } from '../../src/data/repositories/surveyConsentsRepository';
 import {
@@ -59,9 +59,28 @@ import { withDerivedSignals } from '../../src/survey/household/householdSignals'
 
 export default function SurveyRunScreen() {
   const { t } = useTranslation();
-  const { goBack } = useSmartBack();
   const locale = useLocaleStore((s) => s.displayLocale);
   const router = useRouter();
+  /** Unsaved edits since the last local save (both renderers). */
+  const unsavedRef = useRef(false);
+  /** Once submitted, a late autosave must not turn the response back into a draft. */
+  const submittedRef = useRef(false);
+  const persistDraftRef = useRef<((status: 'draft' | 'in_progress') => Promise<unknown>) | null>(null);
+  const { goBack } = useSmartBack({
+    // Field agents leave by hardware back all the time: save quietly instead of losing answers.
+    onDirtyExit: async () => {
+      if (!unsavedRef.current || submittedRef.current) return false;
+      const saved = await persistDraftRef.current?.('in_progress');
+      if (saved) return false;
+      return promptUnsavedExit({
+        isDirty: true,
+        onDiscard: () => {
+          unsavedRef.current = false;
+          router.back();
+        },
+      });
+    },
+  });
   const params = useLocalSearchParams<{
     questionnaireId: string;
     versionNumber: string;
@@ -91,6 +110,12 @@ export default function SurveyRunScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<LocalSaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
+  const timeLabel = () =>
+    new Date().toLocaleTimeString(locale === 'en' ? 'en-GB' : 'fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
   useFocusEffect(
     useCallback(() => {
@@ -218,7 +243,7 @@ export default function SurveyRunScreen() {
 
   const persistDraft = async (status: 'draft' | 'in_progress') => {
     const currentDefinition = definitionRef.current;
-    if (!currentDefinition) return null;
+    if (!currentDefinition || submittedRef.current) return null;
     setSaveState('saving');
     try {
       const hierarchical = currentDefinition.answerRetention === 'inactive_branch';
@@ -237,9 +262,9 @@ export default function SurveyRunScreen() {
         tree: hierarchical ? currentTree : null,
       });
       setResponseId(saved.id);
-      setSavedAt(
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
+      responseIdRef.current = saved.id;
+      unsavedRef.current = false;
+      setSavedAt(timeLabel());
       setSaveState('saved');
       return saved;
     } catch {
@@ -259,6 +284,16 @@ export default function SurveyRunScreen() {
     }, 400);
     return () => clearTimeout(handle);
   }, [tree]);
+
+  // Flat questionnaires autosave too (previously only the tree renderer did).
+  persistDraftRef.current = persistDraft;
+  useEffect(() => {
+    if (!unsavedRef.current || definition?.answerRetention === 'inactive_branch') return;
+    const handle = setTimeout(() => {
+      void persistDraft('in_progress');
+    }, 800);
+    return () => clearTimeout(handle);
+  }, [answers]);
 
   const runSubmit = async (consistencyConfirmed: boolean) => {
     if (!definition) return;
@@ -298,12 +333,12 @@ export default function SurveyRunScreen() {
           .map((f) => `• ${labelRule(f.messageKey)}`)
           .join('\n');
         Alert.alert(
-          'Vérification cohérence',
-          `Des incohérences bloquantes ont été détectées :\n\n${flagText}\n\nCorrigez les réponses ou confirmez après vérification terrain.`,
+          t('surveys.consistencyTitle'),
+          t('surveys.consistencyBody', { flags: flagText }),
           [
-            { text: 'Corriger', style: 'cancel' },
+            { text: t('surveys.fix'), style: 'cancel' },
             {
-              text: 'Confirmer et soumettre',
+              text: t('surveys.confirmSubmit'),
               onPress: () => {
                 void runSubmit(true);
               },
@@ -313,25 +348,23 @@ export default function SurveyRunScreen() {
         return;
       }
 
+      submittedRef.current = true;
+      unsavedRef.current = false;
       setResponseId(result.responseId);
       setSaveState('saved');
-      setSavedAt(
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
+      setSavedAt(timeLabel());
 
       const top = result.evaluation.children[0];
-      const statusLabel = top
-        ? DETECTION_STATUS_LABELS[top.primaryStatus]
-        : 'Évaluation enregistrée';
+      const statusLabel = top ? DETECTION_STATUS_LABELS[top.primaryStatus] : '';
       const sevLabel = top ? SEVERITY_LABELS[top.severity] : '';
 
       if (result.criticalAlert) {
         Alert.alert(
-          'Alerte protection — appareil enquêteur',
-          `${statusLabel} (${sevLabel}).\n\nCas critique enregistré localement. File sync : critical_case_detected + remediation_case.\nLe superviseur ne sera alerté qu’après transfert serveur — ne pas afficher « superviseur notifié » maintenant.`,
+          t('surveys.criticalTitle'),
+          t('surveys.criticalBody', { status: statusLabel, severity: sevLabel }),
           [
             {
-              text: 'Voir le signal',
+              text: t('surveys.viewSignal'),
               onPress: () => {
                 const caseId = result.caseIds[0];
                 router.push(
@@ -340,7 +373,7 @@ export default function SurveyRunScreen() {
               },
             },
             {
-              text: 'Remédiation',
+              text: t('surveys.remediation'),
               onPress: () => {
                 const caseId = result.caseIds[0];
                 router.push(
@@ -355,24 +388,25 @@ export default function SurveyRunScreen() {
       }
 
       if (result.detectionPending) {
-        Alert.alert(
-          'Détection en attente',
-          'Aucun pack de règles valide : statut DETECTION_PENDING (pas « aucun cas »).',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        Alert.alert(t('surveys.pendingTitle'), t('surveys.pendingBody'), [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
         return;
       }
 
       Alert.alert(
-        'Enregistré localement',
+        t('surveys.savedTitle'),
         top
-          ? `CLMRS : ${statusLabel} · sévérité ${sevLabel}. Pending sync.`
-          : 'Réponse soumise. Pending sync.',
+          ? t('surveys.savedBodyWithResult', { status: statusLabel, severity: sevLabel })
+          : t('surveys.savedBody'),
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (e) {
       setSaveState('error');
-      Alert.alert('Erreur', e instanceof Error ? e.message : 'Soumission impossible');
+      Alert.alert(
+        t('surveys.submitErrorTitle'),
+        e instanceof Error ? e.message : t('surveys.submitError')
+      );
     }
   };
 
@@ -380,14 +414,14 @@ export default function SurveyRunScreen() {
     <AppScreen padding={0} backgroundColor={colors.fond} keyboardAvoiding={false}>
       <AppHeader
         title={definition ? resolveLocalized(definition.title, locale) : t('surveys.title')}
-        subtitle={`v${params.versionNumber} · local`}
+        subtitle={t('surveys.versionLocal', { version: params.versionNumber })}
         onBack={goBack}
         rightActions={<LocalSaveIndicator state={saveState} timeLabel={savedAt} />}
       />
       {loading ? (
         <ActivityIndicator color={colors.vert} style={{ marginTop: spacing.xl }} />
       ) : error || !definition ? (
-        <ErrorState title="Impossible de démarrer" message={error || ''} />
+        <ErrorState title={t('surveys.startError')} message={error || ''} />
       ) : (
         <KeyboardAwareScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           {(() => {
@@ -425,6 +459,7 @@ export default function SurveyRunScreen() {
               }
               showErrors={showErrors}
               onChange={(next) => {
+                unsavedRef.current = true;
                 setTree(next);
                 setSaveState('idle');
               }}
@@ -435,39 +470,49 @@ export default function SurveyRunScreen() {
               answers={answers}
               showErrors={showErrors}
               onChange={(key, value) => {
+                unsavedRef.current = true;
                 setAnswers((prev) => ({ ...prev, [key]: value }));
                 setSaveState('idle');
               }}
             />
           )}
           <SecondaryButton
-            title="Enregistrer brouillon"
+            title={t('surveys.saveDraft')}
             onPress={async () => {
               await persistDraft('in_progress');
             }}
+            disabled={submitting}
             style={styles.btn}
           />
           <PrimaryButton
-            title="Soumettre"
+            title={t('surveys.submit')}
+            loading={submitting}
+            disabled={submitting}
             onPress={async () => {
+              if (submitting) return;
               setShowErrors(true);
               if (definition.answerRetention === 'inactive_branch' && tree) {
                 const issues = collectBlockingMessages(definition, tree, locale === 'en' ? 'en' : 'fr', {
                   linkedResponses,
                 });
                 if (issues.length) {
-                  Alert.alert('Contrôles', issues.join('\n'));
+                  Alert.alert(t('surveys.checksTitle'), issues.join('\n'));
                   return;
                 }
               } else {
                 const pruned = pruneHiddenAnswers(definition, answers);
                 const issues = validateAnswers(definition, pruned);
                 if (issues.length) {
-                  Alert.alert('Contrôles', issues.map((i) => i.message).join('\n'));
+                  Alert.alert(t('surveys.checksTitle'), issues.map((i) => i.message).join('\n'));
                   return;
                 }
               }
-              await runSubmit(false);
+              setSubmitting(true);
+              try {
+                await runSubmit(false);
+              } finally {
+                setSubmitting(false);
+              }
             }}
             style={styles.btn}
           />

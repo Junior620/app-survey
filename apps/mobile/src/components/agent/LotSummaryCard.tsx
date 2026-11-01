@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   code: {
     ...typography.presets.titleMedium,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flexShrink: 1,
   },
   copyBtn: {
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   metricValue: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   metricLabel: {
     ...typography.presets.labelSmall,
@@ -201,6 +201,6 @@ const styles = StyleSheet.create({
   gradeText: {
     ...typography.presets.labelMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

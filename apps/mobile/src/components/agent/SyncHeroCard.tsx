@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.titleMedium,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xxs,
   },
   description: {

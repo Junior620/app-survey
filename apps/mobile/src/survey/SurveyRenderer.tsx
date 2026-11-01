@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
   infoBox: {
     backgroundColor: colors.surface2,
@@ -304,6 +304,6 @@ const styles = StyleSheet.create({
   },
   multiChipOn: { backgroundColor: colors.vert, borderColor: colors.vert },
   multiText: { ...typography.presets.bodyMedium, color: colors.texte },
-  multiTextOn: { color: colors.blanc, fontWeight: '700' },
+  multiTextOn: { color: colors.blanc, fontFamily: typography.fontFamily.bold },
   unsupported: { ...typography.presets.bodySmall, color: colors.erreur },
 });

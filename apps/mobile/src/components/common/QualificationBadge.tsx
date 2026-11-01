@@ -84,6 +84,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.presets.labelMedium,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   subtitle: {
     ...typography.presets.bodySmall,
@@ -121,11 +121,11 @@ const styles = StyleSheet.create({
   itemValue: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   highlightValue: {
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   footer: {
     marginTop: spacing.m,

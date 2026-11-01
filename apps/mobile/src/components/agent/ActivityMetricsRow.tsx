@@ -85,13 +85,13 @@ const styles = StyleSheet.create({
   },
   value: {
     ...typography.presets.titleLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xxs,
   },
   label: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
     textAlign: 'center',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
   },
 });

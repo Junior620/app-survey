@@ -581,4 +581,30 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
       await db.execAsync(`PRAGMA user_version = 7`);
     });
   }
+
+  if (version < 8) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS sync_pull_failures (
+          id TEXT PRIMARY KEY NOT NULL,
+          account_id TEXT NOT NULL,
+          table_name TEXT NOT NULL,
+          row_id TEXT NOT NULL,
+          row_json TEXT NOT NULL,
+          last_error TEXT,
+          attempt_count INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_pull_failures_table
+          ON sync_pull_failures(account_id, table_name);
+        CREATE INDEX IF NOT EXISTS idx_outbox_entity
+          ON sync_outbox(entity_type, entity_id, transfer_status);
+      `);
+      // Remote snapshot so "keep server version" can actually apply it.
+      await db.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN table_name TEXT`);
+      await db.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN remote_row_json TEXT`);
+      await db.execAsync(`PRAGMA user_version = 8`);
+    });
+  }
 }

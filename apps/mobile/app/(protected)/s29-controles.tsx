@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   prodName: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   metaText: {
     ...typography.presets.bodySmall,
@@ -180,13 +180,13 @@ const styles = StyleSheet.create({
   scoreBoxValue: {
     ...typography.presets.titleSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   scoreBoxWarning: {
     ...typography.presets.titleSmall,
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   scoreDivider: {
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
     marginBottom: spacing.s,
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   controlTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
     marginRight: spacing.s,
   },

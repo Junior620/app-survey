@@ -339,14 +339,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
   fieldLabel: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
     marginBottom: spacing.xs,
   },
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   toggleChipText: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flexShrink: 1,
   },
   toggleChipTextActive: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     ...typography.presets.bodyMedium,
     color: colors.texte,
     flex: 1,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   protocolBox: {
     backgroundColor: colors.surface2,
@@ -417,12 +417,12 @@ const styles = StyleSheet.create({
   protocolTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   protocolTitleActive: {
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   protocolDetails: {
     marginTop: spacing.m,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   protocolDirectiveTitle: {
     ...typography.presets.labelLarge,
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xs,
   },
   protocolStep: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   checkboxLabelInner: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   submitBtn: {
     marginTop: spacing.l,

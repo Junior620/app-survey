@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   name: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   locality: {
     ...typography.presets.bodySmall,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   metricValue: {
     ...typography.presets.titleSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   metricLabel: {
     ...typography.presets.labelSmall,

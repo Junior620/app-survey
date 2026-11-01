@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   asterisk: {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   warningText: {
     ...typography.presets.bodySmall,
     color: colors.attention,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
 });

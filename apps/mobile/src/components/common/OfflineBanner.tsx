@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle, Animated } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing, typography } from '../../theme';
 import { useReduceMotion, getMotionDuration } from '../../utils/motionUtils';
 
@@ -12,11 +13,12 @@ export interface OfflineBannerProps {
 }
 
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({
-  message = 'Mode hors-ligne actif. Vos collectes sont sauvegardées localement.',
+  message,
   pendingCount,
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
   const reduceMotion = useReduceMotion();
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(-12)).current;
@@ -50,15 +52,15 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
       ]}
       testID={testID}
       accessibilityRole="alert"
-      accessibilityLabel="Avertissement mode hors-ligne"
+      accessibilityLabel={t('offlineBanner.a11y')}
     >
       <Icon source="wifi-off" size={20} color={colors.texteSecondaire} />
       <View style={styles.textContainer}>
-        <Text style={styles.title}>Travail hors ligne</Text>
+        <Text style={styles.title}>{t('offlineBanner.title')}</Text>
         <Text style={styles.message}>
-          {message}
+          {message ?? t('offlineBanner.message')}
           {pendingCount !== undefined && pendingCount > 0 && (
-            <Text style={styles.highlight}> ({pendingCount} élément(s) en attente)</Text>
+            <Text style={styles.highlight}> {t('offlineBanner.pending', { count: pendingCount })}</Text>
           )}
         </Text>
       </View>
@@ -87,7 +89,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 0.2,
   },
   message: {
@@ -96,7 +98,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   highlight: {
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     color: colors.attention,
   },
 });

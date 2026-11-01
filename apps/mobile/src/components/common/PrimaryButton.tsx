@@ -65,7 +65,8 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
           ) : null}
           <Text
             style={[styles.text, isInteractionDisabled && styles.disabledText, textStyle]}
-            numberOfLines={1}
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.6}
           >
             {title}
           </Text>

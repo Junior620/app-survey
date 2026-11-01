@@ -6,6 +6,4 @@ export * from './types/permissions';
 export * from './types/questionnaire';
 export * from './types/ruleAst';
 export * from './i18n/localizedString';
-export * from './contracts/androidRoom';
-export * from './theme/theme';
 export * from './supabase/client';

@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   boxOn: { backgroundColor: colors.vert, borderColor: colors.vert },
-  tick: { color: colors.blanc, fontSize: 14, fontWeight: '700' },
+  tick: { color: colors.blanc, fontSize: 14, fontFamily: typography.fontFamily.bold },
   checkLabel: { ...typography.presets.bodyMedium, color: colors.texte, flex: 1 },
 });

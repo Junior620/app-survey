@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   issuesTitle: {
     ...typography.presets.titleMedium,
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   issue: { ...typography.presets.bodySmall, color: colors.texte, marginBottom: 4 },
@@ -216,14 +216,14 @@ const styles = StyleSheet.create({
   warnTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xs,
   },
   warnBody: { ...typography.presets.bodySmall, color: colors.horsLigne },
   ok: {
     ...typography.presets.bodyMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginVertical: spacing.m,
   },
   btn: { marginBottom: spacing.s },

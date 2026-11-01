@@ -1,11 +1,11 @@
 import { checkConnectivity } from '../services/authService';
-import { getStoredSession } from '../services/secureStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSyncStatusStore } from '../stores/useSyncStatusStore';
 import { isDemoModeEnabled } from './demoMode';
 import { getDatabase } from './db';
 import {
   canAttemptRemoteSync,
+  hasRemoteSession,
   resolveCooperativeId,
   runFullSync,
 } from './syncService';
@@ -38,7 +38,9 @@ async function countOutboxErrors(accountId: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
     `SELECT COUNT(*) as c FROM sync_outbox
-     WHERE account_id = ? AND transfer_status = 'pending' AND last_error IS NOT NULL`,
+     WHERE account_id = ? AND (
+       (transfer_status = 'pending' AND last_error IS NOT NULL) OR transfer_status = 'blocked'
+     )`,
     [accountId]
   );
   return row?.c ?? 0;
@@ -117,14 +119,14 @@ async function flushAutoSync(): Promise<void> {
       return;
     }
 
-    const session = await getStoredSession();
-    if (!canAttemptRemoteSync(!!session)) {
+    // Supabase keeps its own session even when "remember me" is off.
+    if (!canAttemptRemoteSync(await hasRemoteSession())) {
       await refreshUiCounts(accountId);
       return;
     }
 
     syncUi.markSyncing();
-    const coop = resolveCooperativeId(session?.profile?.cooperativeId);
+    const coop = resolveCooperativeId(useAuthStore.getState().profile?.cooperativeId);
     const result = await runFullSync(accountId, coop);
     const pendingAfter = await refreshUiCounts(accountId);
     useSyncStatusStore.getState().markResult(result, pendingAfter);

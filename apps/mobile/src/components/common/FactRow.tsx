@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
     marginRight: spacing.xs,
   },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...typography.presets.labelSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   valuesBox: {
     flexDirection: 'row',
@@ -165,14 +165,14 @@ const styles = StyleSheet.create({
     ...typography.presets.labelSmall,
     color: colors.horsLigne,
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   valueText: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   observedHighlight: {
     color: colors.vert,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   deltaText: {
     ...typography.presets.bodySmall,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   commentRow: {
     flexDirection: 'row',
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentBold: {
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     fontStyle: 'normal',
   },
 });

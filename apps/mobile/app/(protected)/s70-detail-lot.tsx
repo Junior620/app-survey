@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.s,
   },
   stack: {
@@ -323,6 +323,6 @@ const styles = StyleSheet.create({
   backLinkText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

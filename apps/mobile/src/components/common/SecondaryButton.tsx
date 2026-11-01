@@ -124,13 +124,13 @@ const styles = StyleSheet.create({
   filledText: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     textAlign: 'center',
   },
   outlineText: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     textAlign: 'center',
   },
   disabledText: {

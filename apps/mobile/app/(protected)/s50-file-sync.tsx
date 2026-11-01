@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   count: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.m,
   },
   row: {
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   rowSub: {
     ...typography.presets.bodySmall,

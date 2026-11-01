@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
     ...typography.presets.labelSmall,
     color: colors.vert,
     marginBottom: spacing.s,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   label: {
     ...typography.presets.labelLarge,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xs,
     color: colors.texte,
   },
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   section: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
     color: colors.texte,

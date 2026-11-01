@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
   badgeText: {
     ...typography.presets.labelSmall,
     color: colors.blanc,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   label: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

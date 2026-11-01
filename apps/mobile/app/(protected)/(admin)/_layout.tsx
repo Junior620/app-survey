@@ -1,13 +1,14 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { afrexiaTheme } from '@appsurvey/shared';
+import { colors } from '../../../src/theme';
+import { RoleGate, ROLE_AREAS } from '../../../src/navigation';
 
-export default function AdminLayout() {
+function AdminLayoutContent() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: afrexiaTheme.colors.background },
+        contentStyle: { backgroundColor: colors.fond },
         animation: 'slide_from_right',
       }}
     >
@@ -27,5 +28,13 @@ export default function AdminLayout() {
       <Stack.Screen name="questionnaires/[id]/publish" />
       <Stack.Screen name="questionnaires/[id]/question/[qid]" />
     </Stack>
+  );
+}
+
+export default function AdminLayout() {
+  return (
+    <RoleGate allow={ROLE_AREAS.admin}>
+      <AdminLayoutContent />
+    </RoleGate>
   );
 }

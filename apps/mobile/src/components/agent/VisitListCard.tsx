@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   producerName: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
     minWidth: '55%',
   },
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   progressValue: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   progressTrack: {
     height: 4,
