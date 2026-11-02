@@ -1,6 +1,8 @@
 {
-  "name": "SCPB Survey",
+  "ios": {
+    "CFBundleDisplayName": "SCPB Survey"
+  },
   "android": {
-    "name": "SCPB Survey"
+    "app_name": "SCPB Survey"
   }
 }
