@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 
 export type SecteurListItem = {
@@ -59,13 +59,13 @@ export async function createSecteur(
     revision: 1,
   };
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO secteurs (id, account_id, site_id, code, name, responsable_agent_id, status, boundary_geojson, created_at, updated_at, revision)
        VALUES (?, ?, ?, ?, ?, NULL, 'active', NULL, ?, ?, 1)`,
       [id, accountId, siteId, payload.code, payload.name, ts, ts]
     );
-    await enqueueOutboxInTx(accountId, 'secteur', id, 'create', payload, 1);
+    await enqueueOutboxInTx(tx, accountId, 'secteur', id, 'create', payload, 1);
   });
   return payload;
 }
@@ -111,8 +111,8 @@ export async function updateSecteur(
   let payload: { id: string; code: string; name: string; revision: number } | null = null;
 
   try {
-    await db.withTransactionAsync(async () => {
-      const row = await db.getFirstAsync<{ revision: number; status: string }>(
+    await runTransaction(db, async (tx) => {
+      const row = await tx.getFirstAsync<{ revision: number; status: string }>(
         `SELECT revision, status FROM secteurs WHERE id = ? AND account_id = ?`,
         [secteurId, accountId]
       );
@@ -123,13 +123,13 @@ export async function updateSecteur(
       const revision = row.revision + 1;
       const code = input.code.trim();
       const name = input.name.trim();
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE secteurs SET code = ?, name = ?, updated_at = ?, revision = ?
          WHERE id = ? AND account_id = ?`,
         [code, name, ts, revision, secteurId, accountId]
       );
       payload = { id: secteurId, code, name, revision };
-      await enqueueOutboxInTx(accountId, 'secteur', secteurId, 'update', payload, revision);
+      await enqueueOutboxInTx(tx, accountId, 'secteur', secteurId, 'update', payload, revision);
     });
   } catch (e: unknown) {
     if (
@@ -151,18 +151,19 @@ export async function updateSecteur(
 export async function archiveSecteur(accountId: string, secteurId: string) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number }>(
       `SELECT revision FROM secteurs WHERE id = ? AND account_id = ?`,
       [secteurId, accountId]
     );
     if (!row) throw new Error('Secteur introuvable');
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE secteurs SET status = 'archived', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [ts, revision, secteurId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'secteur',
       secteurId,
@@ -182,26 +183,26 @@ export async function reassignAgent(
 ) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
+  await runTransaction(db, async (tx) => {
     if (fromSecteurId) {
-      const active = await db.getFirstAsync<{ id: string; started_at: string }>(
+      const active = await tx.getFirstAsync<{ id: string; started_at: string }>(
         `SELECT id, started_at FROM agent_affectations
          WHERE account_id = ? AND agent_id = ? AND secteur_id = ? AND ended_at IS NULL`,
         [accountId, agentId, fromSecteurId]
       );
       if (active) {
-        await db.runAsync(`UPDATE agent_affectations SET ended_at = ? WHERE id = ?`, [
+        await tx.runAsync(`UPDATE agent_affectations SET ended_at = ? WHERE id = ?`, [
           ts,
           active.id,
         ]);
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO affectation_historique (id, account_id, agent_id, secteur_id, started_at, ended_at, reason)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [newId(), accountId, agentId, fromSecteurId, active.started_at, ts, reason]
         );
       }
     }
-    await db.runAsync(
+    await tx.runAsync(
       `INSERT INTO agent_affectations (id, account_id, agent_id, secteur_id, started_at, ended_at, revision)
        VALUES (?, ?, ?, ?, ?, NULL, 1)`,
       [newId(), accountId, agentId, toSecteurId, ts]

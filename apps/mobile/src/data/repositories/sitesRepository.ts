@@ -1,5 +1,5 @@
 import type { Site, SiteListItem } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import { DEFAULT_COOPERATIVE_ID } from '../syncConstants';
 
@@ -108,13 +108,13 @@ export async function createSite(
   };
 
   try {
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
+    await runTransaction(db, async (tx) => {
+      await tx.runAsync(
         `INSERT INTO sites (id, account_id, code, name, locality, cooperative_id, status, created_at, updated_at, revision)
          VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, 1)`,
         [site.id, site.accountId, site.code, site.name, site.locality, site.cooperativeId, ts, ts]
       );
-      await enqueueOutboxInTx(accountId, 'site', id, 'create', site, 1);
+      await enqueueOutboxInTx(tx, accountId, 'site', id, 'create', site, 1);
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -137,8 +137,8 @@ export async function updateSite(
 
   try {
     let updated: Site | null = null;
-    await db.withTransactionAsync(async () => {
-      const row = await db.getFirstAsync<SiteRow>(
+    await runTransaction(db, async (tx) => {
+      const row = await tx.getFirstAsync<SiteRow>(
         `SELECT * FROM sites WHERE id = ? AND account_id = ?`,
         [siteId, accountId]
       );
@@ -148,7 +148,7 @@ export async function updateSite(
       }
 
       const revision = row.revision + 1;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE sites SET code = ?, name = ?, locality = ?, cooperative_id = ?, updated_at = ?, revision = ?
          WHERE id = ? AND account_id = ?`,
         [
@@ -175,7 +175,7 @@ export async function updateSite(
         updatedAt: ts,
         revision,
       };
-      await enqueueOutboxInTx(accountId, 'site', siteId, 'update', updated, revision);
+      await enqueueOutboxInTx(tx, accountId, 'site', siteId, 'update', updated, revision);
     });
     if (!updated) throw new Error('Échec de la mise à jour');
     return updated;
@@ -222,8 +222,8 @@ export async function archiveSite(accountId: string, siteId: string): Promise<vo
   const db = await getDatabase();
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<SiteRow>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<SiteRow>(
       `SELECT * FROM sites WHERE id = ? AND account_id = ?`,
       [siteId, accountId]
     );
@@ -231,11 +231,12 @@ export async function archiveSite(accountId: string, siteId: string): Promise<vo
     if (row.status === 'archived') throw new Error('Ce site est déjà archivé.');
 
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE sites SET status = 'archived', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [ts, revision, siteId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'site',
       siteId,

@@ -1,6 +1,6 @@
 /**
  * Photo / attachment policy (Phase 4).
- * - Files live outside SQLite; encryption of DB does not cover them.
+ * - Files live outside SQLite; SQLCipher does not cover them (why: encryptionNotes.ts).
  * - Never auto-delete non-transferred (pending) photos to free space.
  * - Restricted access uses real permission checks, not a decorative flag alone.
  */

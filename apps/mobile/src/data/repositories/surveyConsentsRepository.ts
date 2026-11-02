@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import {
   canStartSurvey,
@@ -344,8 +344,8 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
       revision: 1,
       ...nextBase,
     };
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
+    await runTransaction(db, async (tx) => {
+      await tx.runAsync(
         `INSERT INTO survey_consents (
           id, account_id, planteur_id, questionnaire_id, version_number, definition_id,
           consent_version, language, status, presented_confirmed, agent_id, agent_name_snapshot,
@@ -376,7 +376,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
           record.updatedAt,
         ]
       );
-      await enqueueOutboxInTx(identity.accountId, 'survey_consent', id, 'create', record, 1);
+      await enqueueOutboxInTx(tx, identity.accountId, 'survey_consent', id, 'create', record, 1);
     });
     return record;
   }
@@ -389,8 +389,8 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
     transferStatus: 'pending',
     revision,
   };
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `UPDATE survey_consents SET
         version_number = ?, language = ?, status = ?, presented_confirmed = ?,
         agent_id = ?, agent_name_snapshot = ?,
@@ -417,7 +417,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
         identity.accountId,
       ]
     );
-    await enqueueOutboxInTx(identity.accountId, 'survey_consent', next.id, 'update', next, revision);
+    await enqueueOutboxInTx(tx, identity.accountId, 'survey_consent', next.id, 'update', next, revision);
   });
   return next;
 }

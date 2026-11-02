@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 
 export type MissionStatus = 'todo' | 'done' | 'cancelled';
@@ -131,8 +131,8 @@ export async function createMission(
     updatedAt: ts,
   };
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO missions (
         id, account_id, site_id, secteur_id, agent_id, type, object_id, object_label,
         due_at, priority, status, created_at, updated_at, revision
@@ -152,7 +152,7 @@ export async function createMission(
         ts,
       ]
     );
-    await enqueueOutboxInTx(accountId, 'mission', id, 'create', payload, 1);
+    await enqueueOutboxInTx(tx, accountId, 'mission', id, 'create', payload, 1);
   });
 
   return {
@@ -186,8 +186,8 @@ export async function updateMission(
   const ts = nowIso();
   let updated: MissionRow | null = null;
 
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<MissionDbRow>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<MissionDbRow>(
       `SELECT * FROM missions WHERE id = ? AND account_id = ?`,
       [missionId, accountId]
     );
@@ -197,7 +197,7 @@ export async function updateMission(
     }
     const revision = row.revision + 1;
     const priority = input.priority || row.priority;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE missions SET type = ?, object_label = ?, due_at = ?, priority = ?,
        updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [
@@ -226,7 +226,7 @@ export async function updateMission(
       updatedAt: ts,
       revision,
     };
-    await enqueueOutboxInTx(accountId, 'mission', missionId, 'update', updated, revision);
+    await enqueueOutboxInTx(tx, accountId, 'mission', missionId, 'update', updated, revision);
   });
 
   if (!updated) throw new Error('Échec de la mise à jour');
@@ -241,8 +241,8 @@ async function setMissionStatus(
 ) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<MissionDbRow>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<MissionDbRow>(
       `SELECT * FROM missions WHERE id = ? AND account_id = ?`,
       [missionId, accountId]
     );
@@ -251,11 +251,12 @@ async function setMissionStatus(
       throw new Error('Cette mission n’est plus à faire.');
     }
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE missions SET status = ?, updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [status, ts, revision, missionId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'mission',
       missionId,

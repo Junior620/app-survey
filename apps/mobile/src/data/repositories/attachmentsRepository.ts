@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import type { AppRole } from '@appsurvey/shared';
 import { roleHasPermission } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import {
   ATTACHMENTS_DIR,
@@ -98,8 +98,8 @@ export async function saveAttachmentFromUri(params: {
     transfer_status: 'pending',
   };
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO attachments (
         id, account_id, entity_type, entity_id, relative_path, mime_type, byte_size,
         caption, access_level, captured_at, added_at, author_id, transfer_status, revision
@@ -119,7 +119,7 @@ export async function saveAttachmentFromUri(params: {
         row.author_id,
       ]
     );
-    await enqueueOutboxInTx(params.accountId, 'attachment', id, 'create', row, 1);
+    await enqueueOutboxInTx(tx, params.accountId, 'attachment', id, 'create', row, 1);
   });
 
   return row;

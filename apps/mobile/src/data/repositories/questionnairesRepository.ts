@@ -17,7 +17,7 @@ import type {
   VisibilityRules,
 } from '@appsurvey/shared';
 import { deserializeLocalized, serializeLocalized, resolveLocalized } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction, type DbTx } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import { assertQuestionnaireAdmin } from '../../survey/assertQuestionnaireAdmin';
 import { validateDefinitionForPublish } from '../../survey/surveyEngine';
@@ -94,13 +94,13 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
 }
 
 async function writeAudit(
+  tx: DbTx,
   questionnaireId: string,
   actorId: string | null,
   action: string,
   detail?: unknown
 ): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
+  await tx.runAsync(
     `INSERT INTO questionnaire_audit (id, questionnaire_id, actor_id, action, detail_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [newId(), questionnaireId, actorId, action, detail ? JSON.stringify(detail) : null, nowIso()]
@@ -209,8 +209,8 @@ export async function createQuestionnaireDraft(
   const ts = nowIso();
   const title = input.title.trim() || 'Nouveau questionnaire';
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO questionnaires (
         id, account_id, title, description, usage, category, subject_type, instructions,
         confidentiality, status, published_version, draft_version_id, created_at, updated_at, revision
@@ -230,18 +230,19 @@ export async function createQuestionnaireDraft(
         ts,
       ]
     );
-    await db.runAsync(
+    await tx.runAsync(
       `INSERT INTO questionnaire_versions (
         id, questionnaire_id, account_id, version_number, state, definition_json, created_by, created_at, updated_at
       ) VALUES (?, ?, ?, 1, 'draft', NULL, ?, ?, ?)`,
       [versionId, id, accountId, actorId, ts, ts]
     );
-    await db.runAsync(
+    await tx.runAsync(
       `INSERT INTO questionnaire_sections (id, version_id, title, sort_order, visibility_rules_json)
        VALUES (?, ?, 'Section 1', 0, NULL)`,
       [sectionId, versionId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'questionnaire',
       id,
@@ -249,7 +250,7 @@ export async function createQuestionnaireDraft(
       { id, title, status: 'draft' },
       1
     );
-    await writeAudit(id, actorId, 'create_draft', { title });
+    await writeAudit(tx, id, actorId, 'create_draft', { title });
   });
 
   const questionnaire = await getQuestionnaire(accountId, id);
@@ -280,8 +281,8 @@ export async function updateQuestionnaireInfo(
 
   const ts = nowIso();
   const revision = existing.revision + 1;
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `UPDATE questionnaires SET title = ?, description = ?, usage = ?, category = ?, subject_type = ?,
         instructions = ?, confidentiality = ?, updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
@@ -300,6 +301,7 @@ export async function updateQuestionnaireInfo(
       ]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'questionnaire',
       questionnaireId,
@@ -307,7 +309,7 @@ export async function updateQuestionnaireInfo(
       { ...input, revision },
       revision
     );
-    await writeAudit(questionnaireId, actorId, 'update_info');
+    await writeAudit(tx, questionnaireId, actorId, 'update_info');
   });
 
   const updated = await getQuestionnaire(accountId, questionnaireId);
@@ -496,8 +498,8 @@ export async function createDraftFromPublished(
   const versionId = newId();
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO questionnaire_versions (
         id, questionnaire_id, account_id, version_number, state, definition_json, created_by, created_at, updated_at
       ) VALUES (?, ?, ?, ?, 'draft', NULL, ?, ?, ?)`,
@@ -506,7 +508,7 @@ export async function createDraftFromPublished(
 
     for (const section of published.sections) {
       const sectionId = newId();
-      await db.runAsync(
+      await tx.runAsync(
         `INSERT INTO questionnaire_sections (id, version_id, title, sort_order, visibility_rules_json)
          VALUES (?, ?, ?, ?, ?)`,
         [
@@ -519,7 +521,7 @@ export async function createDraftFromPublished(
       );
       for (const question of section.questions) {
         const questionId = newId();
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO questionnaire_questions (
             id, version_id, section_id, stable_key, type, label, help_text, required,
             config_json, validation_json, visibility_rules_json, sort_order
@@ -540,7 +542,7 @@ export async function createDraftFromPublished(
           ]
         );
         for (const opt of question.options) {
-          await db.runAsync(
+          await tx.runAsync(
             `INSERT INTO questionnaire_options (id, question_id, stable_key, label, sort_order, is_other, is_exclusive)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -558,12 +560,13 @@ export async function createDraftFromPublished(
     }
 
     const revision = q.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE questionnaires SET draft_version_id = ?, updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [versionId, ts, revision, questionnaireId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'questionnaire_version',
       versionId,
@@ -571,7 +574,7 @@ export async function createDraftFromPublished(
       { questionnaireId, versionNumber: newVersionNumber },
       1
     );
-    await writeAudit(questionnaireId, actorId, 'create_draft_from_published', {
+    await writeAudit(tx, questionnaireId, actorId, 'create_draft_from_published', {
       versionNumber: newVersionNumber,
     });
   });
@@ -639,16 +642,16 @@ export async function deleteSection(
   );
   if ((count?.c ?? 0) <= 1) throw new Error('Conservez au moins une section.');
 
-  await db.withTransactionAsync(async () => {
-    const questions = await db.getAllAsync<{ id: string }>(
+  await runTransaction(db, async (tx) => {
+    const questions = await tx.getAllAsync<{ id: string }>(
       `SELECT id FROM questionnaire_questions WHERE section_id = ?`,
       [sectionId]
     );
     for (const qq of questions) {
-      await db.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [qq.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [qq.id]);
     }
-    await db.runAsync(`DELETE FROM questionnaire_questions WHERE section_id = ?`, [sectionId]);
-    await db.runAsync(`DELETE FROM questionnaire_sections WHERE id = ?`, [sectionId]);
+    await tx.runAsync(`DELETE FROM questionnaire_questions WHERE section_id = ?`, [sectionId]);
+    await tx.runAsync(`DELETE FROM questionnaire_sections WHERE id = ?`, [sectionId]);
   });
   await touchQuestionnaire(accountId, questionnaireId);
 }
@@ -674,12 +677,12 @@ export async function moveSection(
   if (swapIdx < 0 || swapIdx >= sections.length) return;
   const a = sections[idx];
   const b = sections[swapIdx];
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(`UPDATE questionnaire_sections SET sort_order = ? WHERE id = ?`, [
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(`UPDATE questionnaire_sections SET sort_order = ? WHERE id = ?`, [
       b.sort_order,
       a.id,
     ]);
-    await db.runAsync(`UPDATE questionnaire_sections SET sort_order = ? WHERE id = ?`, [
+    await tx.runAsync(`UPDATE questionnaire_sections SET sort_order = ? WHERE id = ?`, [
       a.sort_order,
       b.id,
     ]);
@@ -724,8 +727,8 @@ export async function addQuestion(
   const config: QuestionConfig =
     type === 'rating_scale' ? { scaleMin: 1, scaleMax: 5 } : {};
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO questionnaire_questions (
         id, version_id, section_id, stable_key, type, label, help_text, required,
         config_json, validation_json, visibility_rules_json, sort_order
@@ -733,7 +736,7 @@ export async function addQuestion(
       [id, q.draftVersionId, sectionId, stableKey, type, label, JSON.stringify(config), (max?.m ?? -1) + 1]
     );
     for (const opt of defaultOptionsForType(type)) {
-      await db.runAsync(
+      await tx.runAsync(
         `INSERT INTO questionnaire_options (id, question_id, stable_key, label, sort_order, is_other, is_exclusive)
          VALUES (?, ?, ?, ?, ?, 0, 0)`,
         [newId(), id, opt.stableKey, serializeLocalized(opt.label), opt.sortOrder]
@@ -823,8 +826,8 @@ export async function updateQuestion(
       });
     }
   }
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `UPDATE questionnaire_questions SET
         label = ?, help_text = ?, required = ?,
         config_json = ?, validation_json = ?, visibility_rules_json = ?,
@@ -846,9 +849,9 @@ export async function updateQuestion(
       ]
     );
     if (input.options) {
-      await db.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [questionId]);
+      await tx.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [questionId]);
       for (const [i, opt] of input.options.entries()) {
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO questionnaire_options (id, question_id, stable_key, label, sort_order, is_other, is_exclusive)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
@@ -883,9 +886,9 @@ export async function deleteQuestion(
     const { assertStableKeyMutable } = await import('../../clmrs/mappingGuard');
     await assertStableKeyMutable({ stableKey: existing.stable_key, deleting: true });
   }
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [questionId]);
-    await db.runAsync(`DELETE FROM questionnaire_questions WHERE id = ?`, [questionId]);
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [questionId]);
+    await tx.runAsync(`DELETE FROM questionnaire_questions WHERE id = ?`, [questionId]);
   });
   await touchQuestionnaire(accountId, questionnaireId);
 }
@@ -913,12 +916,12 @@ export async function moveQuestion(
   if (swapIdx < 0 || swapIdx >= siblings.length) return;
   const a = siblings[idx];
   const b = siblings[swapIdx];
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(`UPDATE questionnaire_questions SET sort_order = ? WHERE id = ?`, [
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(`UPDATE questionnaire_questions SET sort_order = ? WHERE id = ?`, [
       b.sort_order,
       a.id,
     ]);
-    await db.runAsync(`UPDATE questionnaire_questions SET sort_order = ? WHERE id = ?`, [
+    await tx.runAsync(`UPDATE questionnaire_questions SET sort_order = ? WHERE id = ?`, [
       a.sort_order,
       b.id,
     ]);
@@ -993,32 +996,33 @@ export async function publishQuestionnaire(
   };
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
+  await runTransaction(db, async (tx) => {
     if (q.publishedVersion != null) {
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE questionnaire_versions SET state = 'superseded', updated_at = ?
          WHERE questionnaire_id = ? AND version_number = ? AND state = 'published'`,
         [ts, questionnaireId, q.publishedVersion]
       );
     }
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE questionnaire_versions SET state = 'published', definition_json = ?, updated_at = ?
        WHERE id = ?`,
       [JSON.stringify(snapshot), ts, q.draftVersionId]
     );
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE questionnaire_assignments SET version_number = ?, updated_at = ?
        WHERE questionnaire_id = ? AND account_id = ? AND status = 'active'`,
       [versionNumber, ts, questionnaireId, accountId]
     );
     const revision = q.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE questionnaires SET status = 'published', published_version = ?, draft_version_id = NULL,
         updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [versionNumber, ts, revision, questionnaireId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'questionnaire',
       questionnaireId,
@@ -1026,7 +1030,7 @@ export async function publishQuestionnaire(
       { status: 'published', publishedVersion: versionNumber },
       revision
     );
-    await writeAudit(questionnaireId, actorId, 'publish', { versionNumber });
+    await writeAudit(tx, questionnaireId, actorId, 'publish', { versionNumber });
   });
 
   return { versionNumber };
@@ -1046,26 +1050,27 @@ export async function setQuestionnaireStatus(
   const ts = nowIso();
   const revision = q.revision + 1;
 
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `UPDATE questionnaires SET status = ?, updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [status, ts, revision, questionnaireId, accountId]
     );
     if (status === 'suspended' || status === 'archived') {
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE questionnaire_assignments SET status = ?, updated_at = ?
          WHERE questionnaire_id = ? AND account_id = ? AND status = 'active'`,
         [status === 'archived' ? 'archived' : 'suspended', ts, questionnaireId, accountId]
       );
     }
     if (status === 'published') {
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE questionnaire_assignments SET status = 'active', updated_at = ?
          WHERE questionnaire_id = ? AND account_id = ? AND status = 'suspended'`,
         [ts, questionnaireId, accountId]
       );
     }
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'questionnaire',
       questionnaireId,
@@ -1073,7 +1078,7 @@ export async function setQuestionnaireStatus(
       { status },
       revision
     );
-    await writeAudit(questionnaireId, actorId, `status_${status}`);
+    await writeAudit(tx, questionnaireId, actorId, `status_${status}`);
   });
 }
 
@@ -1107,18 +1112,18 @@ export async function duplicateQuestionnaire(
 
   const db = await getDatabase();
   // Replace default section with copied content
-  await db.withTransactionAsync(async () => {
-    const oldSections = await db.getAllAsync<{ id: string }>(
+  await runTransaction(db, async (tx) => {
+    const oldSections = await tx.getAllAsync<{ id: string }>(
       `SELECT id FROM questionnaire_sections WHERE version_id = ?`,
       [created.versionId]
     );
     for (const s of oldSections) {
-      await db.runAsync(`DELETE FROM questionnaire_questions WHERE section_id = ?`, [s.id]);
-      await db.runAsync(`DELETE FROM questionnaire_sections WHERE id = ?`, [s.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_questions WHERE section_id = ?`, [s.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_sections WHERE id = ?`, [s.id]);
     }
     for (const section of definition!.sections) {
       const sectionId = newId();
-      await db.runAsync(
+      await tx.runAsync(
         `INSERT INTO questionnaire_sections (id, version_id, title, sort_order, visibility_rules_json)
          VALUES (?, ?, ?, ?, ?)`,
         [
@@ -1131,7 +1136,7 @@ export async function duplicateQuestionnaire(
       );
       for (const question of section.questions) {
         const questionId = newId();
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO questionnaire_questions (
             id, version_id, section_id, stable_key, type, label, help_text, required,
             config_json, validation_json, visibility_rules_json, sort_order
@@ -1152,7 +1157,7 @@ export async function duplicateQuestionnaire(
           ]
         );
         for (const opt of question.options) {
-          await db.runAsync(
+          await tx.runAsync(
             `INSERT INTO questionnaire_options (id, question_id, stable_key, label, sort_order, is_other, is_exclusive)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -1168,7 +1173,7 @@ export async function duplicateQuestionnaire(
         }
       }
     }
-    await writeAudit(created.questionnaire.id, actorId, 'duplicate', { from: questionnaireId });
+    await writeAudit(tx, created.questionnaire.id, actorId, 'duplicate', { from: questionnaireId });
   });
 
   return created.questionnaire.id;
@@ -1195,31 +1200,31 @@ export async function deleteDraftQuestionnaire(
     throw new Error('Des réponses existent déjà — suppression impossible.');
   }
 
-  await db.withTransactionAsync(async () => {
-    const versions = await db.getAllAsync<{ id: string }>(
+  await runTransaction(db, async (tx) => {
+    const versions = await tx.getAllAsync<{ id: string }>(
       `SELECT id FROM questionnaire_versions WHERE questionnaire_id = ?`,
       [questionnaireId]
     );
     for (const v of versions) {
-      const questions = await db.getAllAsync<{ id: string }>(
+      const questions = await tx.getAllAsync<{ id: string }>(
         `SELECT id FROM questionnaire_questions WHERE version_id = ?`,
         [v.id]
       );
       for (const qq of questions) {
-        await db.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [qq.id]);
+        await tx.runAsync(`DELETE FROM questionnaire_options WHERE question_id = ?`, [qq.id]);
       }
-      await db.runAsync(`DELETE FROM questionnaire_questions WHERE version_id = ?`, [v.id]);
-      await db.runAsync(`DELETE FROM questionnaire_sections WHERE version_id = ?`, [v.id]);
-      await db.runAsync(`DELETE FROM questionnaire_versions WHERE id = ?`, [v.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_questions WHERE version_id = ?`, [v.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_sections WHERE version_id = ?`, [v.id]);
+      await tx.runAsync(`DELETE FROM questionnaire_versions WHERE id = ?`, [v.id]);
     }
-    await db.runAsync(`DELETE FROM questionnaire_assignments WHERE questionnaire_id = ?`, [
+    await tx.runAsync(`DELETE FROM questionnaire_assignments WHERE questionnaire_id = ?`, [
       questionnaireId,
     ]);
-    await db.runAsync(`DELETE FROM questionnaires WHERE id = ? AND account_id = ?`, [
+    await tx.runAsync(`DELETE FROM questionnaires WHERE id = ? AND account_id = ?`, [
       questionnaireId,
       accountId,
     ]);
-    await writeAudit(questionnaireId, actorId, 'delete_draft');
+    await writeAudit(tx, questionnaireId, actorId, 'delete_draft');
   });
 }
 

@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 
 export type PlanteurCreateInput = {
@@ -222,8 +222,8 @@ export async function createPlanteur(accountId: string, input: PlanteurCreateInp
   };
 
   try {
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
+    await runTransaction(db, async (tx) => {
+      await tx.runAsync(
         `INSERT INTO planteurs (
           id, account_id, code, nom, prenoms, telephone, village_id, secteur_id, site_id,
           cooperative_id, id_document_type, id_document_number, id_document_availability,
@@ -244,7 +244,7 @@ export async function createPlanteur(accountId: string, input: PlanteurCreateInp
           ts,
         ]
       );
-      await enqueueOutboxInTx(accountId, 'planteur', id, 'create', payload, 1);
+      await enqueueOutboxInTx(tx, accountId, 'planteur', id, 'create', payload, 1);
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -273,8 +273,8 @@ export async function updatePlanteur(
   let updated: PlanteurDetail | null = null;
 
   try {
-    await db.withTransactionAsync(async () => {
-      const row = await db.getFirstAsync<PlanteurDbRow>(
+    await runTransaction(db, async (tx) => {
+      const row = await tx.getFirstAsync<PlanteurDbRow>(
         `SELECT * FROM planteurs WHERE id = ? AND account_id = ?`,
         [planteurId, accountId]
       );
@@ -285,7 +285,7 @@ export async function updatePlanteur(
 
       const revision = row.revision + 1;
       const idAvail = input.idDocumentAvailability ?? row.id_document_availability;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE planteurs SET code = ?, nom = ?, prenoms = ?, telephone = ?, secteur_id = ?,
          id_document_availability = ?, updated_at = ?, revision = ?
          WHERE id = ? AND account_id = ?`,
@@ -320,7 +320,7 @@ export async function updatePlanteur(
         updatedAt: ts,
         revision,
       };
-      await enqueueOutboxInTx(accountId, 'planteur', planteurId, 'update', updated, revision);
+      await enqueueOutboxInTx(tx, accountId, 'planteur', planteurId, 'update', updated, revision);
     });
   } catch (e: unknown) {
     if (
@@ -353,8 +353,8 @@ export async function archivePlanteur(accountId: string, planteurId: string): Pr
   const db = await getDatabase();
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<PlanteurDbRow>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<PlanteurDbRow>(
       `SELECT * FROM planteurs WHERE id = ? AND account_id = ?`,
       [planteurId, accountId]
     );
@@ -362,12 +362,13 @@ export async function archivePlanteur(accountId: string, planteurId: string): Pr
     if (row.status === 'archived') throw new Error('Ce planteur est déjà archivé.');
 
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE planteurs SET status = 'archived', updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [ts, revision, planteurId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'planteur',
       planteurId,
@@ -430,8 +431,8 @@ export async function createParcelle(
   };
 
   try {
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
+    await runTransaction(db, async (tx) => {
+      await tx.runAsync(
         `INSERT INTO parcelles (
           id, account_id, planteur_id, site_id, code, name, locality, culture_principale,
           cultures_associees, annee_plantation, superficie_declaree_ha, superficie_mesuree_ha,
@@ -450,7 +451,7 @@ export async function createParcelle(
           ts,
         ]
       );
-      await enqueueOutboxInTx(accountId, 'parcelle', id, 'create', payload, 1);
+      await enqueueOutboxInTx(tx, accountId, 'parcelle', id, 'create', payload, 1);
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -477,8 +478,8 @@ export async function updateParcelle(
   let updated: ParcelleListItem | null = null;
 
   try {
-    await db.withTransactionAsync(async () => {
-      const row = await db.getFirstAsync<ParcelleDbRow>(
+    await runTransaction(db, async (tx) => {
+      const row = await tx.getFirstAsync<ParcelleDbRow>(
         `SELECT * FROM parcelles WHERE id = ? AND account_id = ?`,
         [parcelleId, accountId]
       );
@@ -488,7 +489,7 @@ export async function updateParcelle(
       }
 
       const revision = row.revision + 1;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE parcelles SET code = ?, name = ?, superficie_declaree_ha = ?, annee_plantation = ?,
          updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
         [
@@ -514,7 +515,7 @@ export async function updateParcelle(
         mappingStatus: row.mapping_status,
         status: 'active',
       };
-      await enqueueOutboxInTx(accountId, 'parcelle', parcelleId, 'update', updated, revision);
+      await enqueueOutboxInTx(tx, accountId, 'parcelle', parcelleId, 'update', updated, revision);
     });
   } catch (e: unknown) {
     if (
@@ -537,8 +538,8 @@ export async function archiveParcelle(accountId: string, parcelleId: string): Pr
   const db = await getDatabase();
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<ParcelleDbRow>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<ParcelleDbRow>(
       `SELECT * FROM parcelles WHERE id = ? AND account_id = ?`,
       [parcelleId, accountId]
     );
@@ -546,12 +547,13 @@ export async function archiveParcelle(accountId: string, parcelleId: string): Pr
     if (row.status === 'archived') throw new Error('Cette parcelle est déjà archivée.');
 
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE parcelles SET status = 'archived', updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [ts, revision, parcelleId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'parcelle',
       parcelleId,
