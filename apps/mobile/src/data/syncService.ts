@@ -11,8 +11,21 @@ import {
   DEFAULT_COOPERATIVE_ID,
   MIRROR_TABLE_BY_ENTITY,
 } from './syncConstants';
-import { pullRemoteChanges, type PullResult } from './syncPull';
-import { listUnresolvedConflicts } from './syncConflicts';
+import { pullRemoteChanges, resolveConflict, type PullResult } from './syncPull';
+import { listUnresolvedConflicts, upsertOpenConflict } from './syncConflicts';
+import { isOutboxRowDue } from './outboxBackoff';
+
+const PUSH_BATCH_SIZE = 50;
+/** Supabase's own session, which also exists when "remember me" is off. */
+export async function hasRemoteSession(): Promise<boolean> {
+  if (!isRealSupabaseClient(supabaseClient)) return false;
+  try {
+    const { data } = await requireClient().auth.getSession();
+    return !!data.session;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Honest remote service state.
@@ -63,7 +76,11 @@ type OutboxRow = {
   payload_json: string;
   revision: number;
   attempt_count: number;
+  last_error: string | null;
+  updated_at: string;
 };
+
+class StaleRevisionError extends Error {}
 
 function requireClient() {
   if (!isRealSupabaseClient(supabaseClient)) {
@@ -190,7 +207,33 @@ async function upsertMirror(
 ): Promise<void> {
   const client = requireClient();
   const { error } = await client.from(table).upsert(record, { onConflict: 'id' });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Raised by the guard_mirror_write trigger (migration 009).
+    if (error.message.includes('stale_revision')) throw new StaleRevisionError(error.message);
+    throw new Error(error.message);
+  }
+}
+
+/** The server holds a newer revision: park the row and open a conflict with the server copy. */
+async function parkStaleRow(row: OutboxRow, accountId: string, message: string): Promise<void> {
+  const table =
+    row.entity_type === 'attachment' ? 'attachments_meta' : MIRROR_TABLE_BY_ENTITY[row.entity_type];
+  let remoteRow: Record<string, unknown> | null = null;
+  if (table) {
+    const { data } = await requireClient().from(table).select('*').eq('id', row.entity_id).maybeSingle();
+    remoteRow = (data as Record<string, unknown> | null) ?? null;
+  }
+  await upsertOpenConflict({
+    accountId,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    localRevision: row.revision,
+    remoteRevision: Number(remoteRow?.revision ?? row.revision + 1),
+    detail: 'Le serveur a une version plus récente de cet élément.',
+    tableName: table ?? null,
+    remoteRow,
+  });
+  await markOutbox(row.id, 'blocked', message, row.attempt_count + 1);
 }
 
 async function pushOne(
@@ -345,29 +388,39 @@ export async function pushPendingOutbox(
   accountId: string,
   cooperativeId?: string | null
 ): Promise<PushOutboxResult> {
-  const session = await getStoredSession();
-  if (!canAttemptRemoteSync(!!session)) {
+  const signedIn = await hasRemoteSession();
+  if (!canAttemptRemoteSync(signedIn)) {
     return {
       attempted: 0,
       acked: 0,
       failed: 0,
-      errors: [getRemoteServiceState(!!session).message],
+      errors: [getRemoteServiceState(signedIn).message],
     };
   }
 
-  const coop = resolveCooperativeId(
-    cooperativeId ?? session?.profile?.cooperativeId
-  );
+  const session = cooperativeId ? null : await getStoredSession();
+  const coop = resolveCooperativeId(cooperativeId ?? session?.profile?.cooperativeId);
 
   const db = await getDatabase();
-  const rows = await db.getAllAsync<OutboxRow>(
-    `SELECT id, account_id, entity_type, entity_id, operation, payload_json, revision, attempt_count
+  // Pushes are serialized (runFullSync), so a row still "sending" was cut off by an app kill.
+  await db.runAsync(
+    `UPDATE sync_outbox SET transfer_status = 'pending', updated_at = ?
+     WHERE account_id = ? AND transfer_status = 'sending'`,
+    [nowIso(), accountId]
+  );
+
+  const candidates = await db.getAllAsync<OutboxRow>(
+    `SELECT id, account_id, entity_type, entity_id, operation, payload_json, revision,
+            attempt_count, last_error, updated_at
      FROM sync_outbox
      WHERE account_id = ? AND transfer_status = 'pending'
      ORDER BY created_at ASC
-     LIMIT 50`,
+     LIMIT 500`,
     [accountId]
   );
+  // Failing rows wait out their backoff instead of blocking newer rows at the head of the queue.
+  const now = Date.now();
+  const rows = candidates.filter((row) => isOutboxRowDue(row, now)).slice(0, PUSH_BATCH_SIZE);
 
   const result: PushOutboxResult = { attempted: rows.length, acked: 0, failed: 0, errors: [] };
 
@@ -381,9 +434,13 @@ export async function pushPendingOutbox(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       try {
-        await markOutbox(row.id, 'pending', msg, attempts);
+        if (e instanceof StaleRevisionError) {
+          await parkStaleRow(row, accountId, msg);
+        } else {
+          await markOutbox(row.id, 'pending', msg, attempts);
+        }
       } catch {
-        /* The row stays pending with its previous error if SQLite is briefly locked. */
+        /* The row is reset to pending at the next push if SQLite is briefly locked. */
       }
       result.failed += 1;
       result.errors.push(`${row.entity_type}:${row.entity_id} — ${msg}`);
@@ -425,5 +482,5 @@ async function runFullSyncExclusive(
   return { push, pull, conflictCount: conflicts.length };
 }
 
-export { pullRemoteChanges, listUnresolvedConflicts };
+export { pullRemoteChanges, listUnresolvedConflicts, resolveConflict };
 export type { PullResult };

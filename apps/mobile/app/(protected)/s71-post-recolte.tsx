@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   lotCodeText: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   lotMetaText: {
     ...typography.presets.bodySmall,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   chronoBannerTitle: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
     textAlign: 'center',
   },
@@ -248,13 +248,13 @@ const styles = StyleSheet.create({
   stepBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.blanc,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     fontSize: 10,
   },
   stepArrow: {
     ...typography.presets.labelSmall,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   rowTwoCols: {
     flexDirection: 'row',

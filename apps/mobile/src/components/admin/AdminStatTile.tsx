@@ -137,12 +137,12 @@ const styles = StyleSheet.create({
   value: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: 4,
   },
   valueMuted: {
     ...typography.presets.bodySmall,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     color: colors.texteSecondaire,
   },
   label: {

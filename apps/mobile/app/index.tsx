@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   appTitle: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 1,
     marginTop: spacing.l,
     textAlign: 'center',

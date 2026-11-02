@@ -97,7 +97,7 @@ export const AgentProfileSheet: React.FC<AgentProfileSheetProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.4)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   avatarText: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   profileText: {
     flex: 1,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   name: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   sector: {
     ...typography.presets.bodySmall,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   logoutLabel: {
     ...typography.presets.bodyLarge,
     color: colors.erreur,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
 });

@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.s,
   },
-  switchLabel: { ...typography.presets.bodyMedium, color: colors.texte, fontWeight: '600' },
+  switchLabel: { ...typography.presets.bodyMedium, color: colors.texte, fontFamily: typography.fontFamily.semibold },
   block: {
     backgroundColor: colors.blanc,
     borderRadius: radius.m,
@@ -294,12 +294,12 @@ const styles = StyleSheet.create({
   blockTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   optRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   optBlock: { gap: spacing.xs, marginBottom: spacing.s },
   removeOpt: { padding: spacing.s },
-  link: { ...typography.presets.labelMedium, color: colors.vert, fontWeight: '700' },
+  link: { ...typography.presets.labelMedium, color: colors.vert, fontFamily: typography.fontFamily.bold },
   ops: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   opChip: {
     paddingHorizontal: spacing.s,

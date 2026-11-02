@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   complianceIcon: { marginRight: spacing.s, marginTop: 2 },
   complianceTextWrapper: { flex: 1 },
-  complianceTitle: { ...typography.presets.labelLarge, color: colors.vert, fontWeight: '700', marginBottom: 2 },
+  complianceTitle: { ...typography.presets.labelLarge, color: colors.vert, fontFamily: typography.fontFamily.bold, marginBottom: 2 },
   complianceText: { ...typography.presets.bodySmall, color: colors.texte, lineHeight: 18 },
   actionRow: {
     flexDirection: 'row',
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -269,8 +269,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: spacing.m,
   },
-  lotCode: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
-  coopText: { ...typography.presets.bodySmall, color: colors.brun, fontWeight: '600' },
+  lotCode: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
+  coopText: { ...typography.presets.bodySmall, color: colors.brun, fontFamily: typography.fontFamily.semibold },
   statsRow: {
     flexDirection: 'row',
     backgroundColor: colors.surface2,
@@ -280,9 +280,9 @@ const styles = StyleSheet.create({
   },
   statBox: { flex: 1, alignItems: 'center' },
   statLabel: { ...typography.presets.labelSmall, color: colors.horsLigne, fontSize: 10 },
-  statValue: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '700', marginTop: 2 },
-  statValueHighlight: { ...typography.presets.titleSmall, color: colors.vert, fontWeight: '700', marginTop: 2 },
-  statCode: { ...typography.presets.labelSmall, color: colors.brun, fontWeight: '700', marginTop: 2 },
+  statValue: { ...typography.presets.titleSmall, color: colors.texte, fontFamily: typography.fontFamily.bold, marginTop: 2 },
+  statValueHighlight: { ...typography.presets.titleSmall, color: colors.vert, fontFamily: typography.fontFamily.bold, marginTop: 2 },
+  statCode: { ...typography.presets.labelSmall, color: colors.brun, fontFamily: typography.fontFamily.bold, marginTop: 2 },
   lotFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
     borderRadius: radius.s,
   },
-  miniBtnText: { ...typography.presets.labelSmall, color: colors.blanc, fontWeight: '700' },
+  miniBtnText: { ...typography.presets.labelSmall, color: colors.blanc, fontFamily: typography.fontFamily.bold },
   miniBtnSecondary: { backgroundColor: colors.brunClair },
-  miniBtnTextSecondary: { ...typography.presets.labelSmall, color: colors.brun, fontWeight: '700' },
+  miniBtnTextSecondary: { ...typography.presets.labelSmall, color: colors.brun, fontFamily: typography.fontFamily.bold },
 });

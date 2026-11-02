@@ -52,6 +52,19 @@ function ageFromBirthDate(iso: string | null, asOf = new Date()): number | null 
 }
 
 /**
+ * True when the answers contain at least one field of the mapping.
+ * Instruments that collect none (annual farm survey, admin-built questionnaires) must not be
+ * scored: the engine would evaluate a synthetic "unknown child" and open a false case.
+ */
+export function answersMatchMapping(answers: AnswerMap, mapping: FactMapping): boolean {
+  return Object.values(mapping.fields).some((key) => {
+    const value = (answers as Record<string, unknown>)[key];
+    if (value === undefined || value === null || value === '') return false;
+    return !(Array.isArray(value) && value.length === 0);
+  });
+}
+
+/**
  * Extract household / visit / children facts using a questionnaire mapping.
  * Supports either a single-child flat mapping or JSON array answer for children.
  */

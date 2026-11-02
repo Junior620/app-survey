@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, StyleProp, ViewStyle } from 'react-native';
 import { SemanticIcon } from './icons';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography } from '../../theme';
 import { getMotionDuration, useReduceMotion } from '../../utils/motionUtils';
 
@@ -13,11 +14,11 @@ export interface LocalSaveIndicatorProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const LABELS: Record<LocalSaveState, string> = {
-  idle: '',
-  saving: 'Enregistrement…',
-  saved: 'Enregistré sur cet appareil',
-  error: "Échec de l'enregistrement",
+const LABEL_KEYS: Record<LocalSaveState, string | null> = {
+  idle: null,
+  saving: 'localSave.saving',
+  saved: 'localSave.saved',
+  error: 'localSave.error',
 };
 
 export const LocalSaveIndicator: React.FC<LocalSaveIndicatorProps> = ({
@@ -25,6 +26,7 @@ export const LocalSaveIndicator: React.FC<LocalSaveIndicatorProps> = ({
   timeLabel,
   style,
 }) => {
+  const { t } = useTranslation();
   const reduceMotion = useReduceMotion();
   const opacity = useRef(new Animated.Value(1)).current;
 
@@ -58,7 +60,7 @@ export const LocalSaveIndicator: React.FC<LocalSaveIndicatorProps> = ({
     <Animated.View style={[styles.row, { opacity }, style]}>
       <SemanticIcon name={iconName} size={16} color={color} />
       <View style={styles.textCol}>
-        <Text style={[styles.label, { color }]}>{LABELS[state]}</Text>
+        <Text style={[styles.label, { color }]}>{LABEL_KEYS[state] ? t(LABEL_KEYS[state]!) : ''}</Text>
         {timeLabel && state === 'saved' ? (
           <Text style={styles.time}>{timeLabel}</Text>
         ) : null}
@@ -79,7 +81,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.presets.labelMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   time: {
     ...typography.presets.labelSmall,

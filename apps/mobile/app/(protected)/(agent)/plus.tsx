@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   toggleTitle: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   toggleSub: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.7 },
   rowTitle: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   rowSub: {
@@ -205,6 +205,6 @@ const styles = StyleSheet.create({
   soon: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

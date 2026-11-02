@@ -1,10 +1,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography, layout } from '../../../src/theme';
 import { SemanticIcon } from '../../../src/components/common';
+import { RoleGate, ROLE_AREAS } from '../../../src/navigation';
 
-export default function DurabiliteLayout() {
+function DurabiliteLayoutContent() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, spacing.s);
   const tabBarHeight = 52 + bottomPad;
@@ -32,43 +35,51 @@ export default function DurabiliteLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tableau de bord',
+          title: t('tabs.dashboard'),
           tabBarIcon: ({ color }) => (
             <SemanticIcon name="home" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Tableau de bord durabilité',
+          tabBarAccessibilityLabel: t('tabs.dashboardA11y'),
         }}
       />
       <Tabs.Screen
         name="signalements"
         options={{
-          title: 'Signalements',
+          title: t('tabs.signals'),
           tabBarIcon: ({ color }) => (
             <SemanticIcon name="warning" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Signalements',
+          tabBarAccessibilityLabel: t('tabs.signals'),
         }}
       />
       <Tabs.Screen
         name="remediations"
         options={{
-          title: 'Remédiations',
+          title: t('tabs.remediations'),
           tabBarIcon: ({ color }) => (
             <SemanticIcon name="shield" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Plans de remédiation',
+          tabBarAccessibilityLabel: t('tabs.remediationsA11y'),
         }}
       />
       <Tabs.Screen
         name="recherche"
         options={{
-          title: 'Recherche',
+          title: t('tabs.search'),
           tabBarIcon: ({ color }) => (
             <SemanticIcon name="search" size={layout.iconSize} color={String(color)} />
           ),
-          tabBarAccessibilityLabel: 'Recherche',
+          tabBarAccessibilityLabel: t('tabs.search'),
         }}
       />
     </Tabs>
+  );
+}
+
+export default function DurabiliteLayout() {
+  return (
+    <RoleGate allow={ROLE_AREAS.durabilite}>
+      <DurabiliteLayoutContent />
+    </RoleGate>
   );
 }

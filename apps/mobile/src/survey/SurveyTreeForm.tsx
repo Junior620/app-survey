@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
   roster: {
     gap: spacing.xs,
@@ -746,13 +746,13 @@ const styles = StyleSheet.create({
   contextKicker: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     letterSpacing: 0.6,
   },
   contextTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
   },
   contextMeta: {
     ...typography.presets.bodySmall,
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
   listIndex: {
     ...typography.presets.labelSmall,
     color: colors.texteSecondaire,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   listInput: {
     minHeight: 48,
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
     ...typography.presets.bodyMedium,
   },
   textButton: { alignSelf: 'flex-start', paddingVertical: spacing.xs },
-  textButtonLabel: { ...typography.presets.labelSmall, color: colors.erreur, fontWeight: '700' },
+  textButtonLabel: { ...typography.presets.labelSmall, color: colors.erreur, fontFamily: typography.fontFamily.bold },
   addButton: {
     minHeight: 48,
     borderRadius: radius.s,
@@ -787,9 +787,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.blanc,
   },
-  addLabel: { ...typography.presets.bodyMedium, color: colors.vert, fontWeight: '700' },
+  addLabel: { ...typography.presets.bodyMedium, color: colors.vert, fontFamily: typography.fontFamily.bold },
   restore: { paddingVertical: spacing.xs },
-  restoreText: { ...typography.presets.bodySmall, color: colors.vert, fontWeight: '700' },
+  restoreText: { ...typography.presets.bodySmall, color: colors.vert, fontFamily: typography.fontFamily.bold },
   unknown: {
     minHeight: 48,
     borderRadius: radius.s,
@@ -800,9 +800,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.blanc,
   },
   unknownOn: { backgroundColor: colors.vert, borderColor: colors.vert },
-  unknownText: { ...typography.presets.bodyMedium, color: colors.texte, fontWeight: '700' },
+  unknownText: { ...typography.presets.bodyMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   unknownTextOn: { color: colors.blanc },
-  counter: { ...typography.presets.labelSmall, color: colors.vert, fontWeight: '700' },
+  counter: { ...typography.presets.labelSmall, color: colors.vert, fontFamily: typography.fontFamily.bold },
   multi: {
     minHeight: 48,
     borderWidth: 1,
@@ -814,6 +814,6 @@ const styles = StyleSheet.create({
   },
   multiOn: { backgroundColor: colors.vert, borderColor: colors.vert },
   multiText: { ...typography.presets.bodyMedium, color: colors.texte },
-  multiTextOn: { color: colors.blanc, fontWeight: '700' },
+  multiTextOn: { color: colors.blanc, fontFamily: typography.fontFamily.bold },
   linkedEmpty: { ...typography.presets.bodySmall, color: colors.texteSecondaire },
 });

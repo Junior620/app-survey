@@ -88,10 +88,8 @@ export default function ProtectedLayout() {
       <Stack.Screen name="survey-run" />
       <Stack.Screen name="s26-personnes" />
       <Stack.Screen name="s29-controles" />
-      <Stack.Screen name="s49-versions-regles" />
       <Stack.Screen name="s50-file-sync" />
       <Stack.Screen name="s51-resolution-conflits" />
-      <Stack.Screen name="s52-durabilite" />
       <Stack.Screen name="s69-liste-lots" />
       <Stack.Screen name="s70-detail-lot" />
       <Stack.Screen name="s71-post-recolte" />
@@ -99,8 +97,6 @@ export default function ProtectedLayout() {
       <Stack.Screen name="s73-observation" />
       <Stack.Screen name="s75-pourquoi-ce-signal" />
       <Stack.Screen name="s76-remediation" />
-      <Stack.Screen name="admin" />
-      <Stack.Screen name="auditeur" />
     </Stack>
   );
 }

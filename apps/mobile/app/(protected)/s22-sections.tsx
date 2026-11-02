@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   refusalTitle: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
   },
   statusBox: {

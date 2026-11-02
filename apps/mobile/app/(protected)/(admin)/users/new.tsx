@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   roleTitle: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
   },
   roles: {
@@ -169,6 +169,6 @@ const styles = StyleSheet.create({
   },
   roleTextOn: {
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

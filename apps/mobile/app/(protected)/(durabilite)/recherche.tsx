@@ -154,16 +154,16 @@ const styles = StyleSheet.create({
   catText: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   catTextActive: {
     color: colors.blanc,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -193,17 +193,17 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   resultTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   resultId: {
     ...typography.presets.bodySmall,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   resultSub: {
@@ -218,6 +218,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.bordure,
   },
   inspectBtn: {
-    height: 42,
+    height: 48,
   },
 });

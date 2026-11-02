@@ -191,13 +191,13 @@ const styles = StyleSheet.create({
   avatarText: {
     ...typography.presets.labelLarge,
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   text: { flex: 1 },
   name: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   meta: {
     ...typography.presets.bodySmall,

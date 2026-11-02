@@ -14,6 +14,7 @@ import {
 } from '../../../src/components/common';
 import { colors, radius, spacing, typography, shadows } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
+import { confirmLogout } from '../../../src/utils/confirmLogout';
 
 export default function AuditeurHomeScreen() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function AuditeurHomeScreen() {
   const auditorName = profile?.fullName || 'Auditeur Externe / Organisme Tiers';
 
   const handleLogout = async () => {
+    if (!(await confirmLogout())) return;
     await logout();
     router.replace('/(public)/s02-login');
   };
@@ -142,12 +144,12 @@ const styles = StyleSheet.create({
   logoutHeaderText: {
     ...typography.presets.labelMedium,
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.l,
     marginBottom: spacing.s,
   },
@@ -178,7 +180,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   cardDesc: {
@@ -207,7 +209,7 @@ const styles = StyleSheet.create({
   exportTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   exportDesc: {

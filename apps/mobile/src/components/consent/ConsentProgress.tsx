@@ -37,8 +37,8 @@ export function ConsentProgress({ step }: { step: ConsentStep }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
-  step: { ...typography.presets.labelSmall, color: colors.vert, fontWeight: '700' },
+  step: { ...typography.presets.labelSmall, color: colors.vert, fontFamily: typography.fontFamily.bold },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s },
   item: { ...typography.presets.meta, color: colors.texteSecondaire },
-  current: { color: colors.texte, fontWeight: '700' },
+  current: { color: colors.texte, fontFamily: typography.fontFamily.bold },
 });

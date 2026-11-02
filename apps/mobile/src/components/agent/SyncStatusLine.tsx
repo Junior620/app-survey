@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.presets.bodyMedium,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
     flex: 1,
   },
 });

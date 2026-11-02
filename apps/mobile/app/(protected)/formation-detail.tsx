@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   headerBtnText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   card: {
     backgroundColor: colors.blanc,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   section: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
     color: colors.texte,
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   meta: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   status: {
     ...typography.presets.labelMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginTop: spacing.xs,
   },
 });

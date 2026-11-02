@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
@@ -179,6 +179,6 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.vert, borderColor: colors.vert },
   chipText: { ...typography.presets.labelSmall, color: colors.texte },
-  chipTextOn: { color: colors.blanc, fontWeight: '700' },
+  chipTextOn: { color: colors.blanc, fontFamily: typography.fontFamily.bold },
   error: { ...typography.presets.bodySmall, color: colors.erreur },
 });

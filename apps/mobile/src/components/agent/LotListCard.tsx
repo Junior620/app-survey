@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   lotId: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
     minWidth: '55%',
   },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   metricValue: {
     ...typography.presets.titleSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   metricLabel: {
     ...typography.presets.labelSmall,
@@ -206,6 +206,6 @@ const styles = StyleSheet.create({
   seeLot: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

@@ -22,6 +22,8 @@ export interface FormTextFieldProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: string;
   rightIcon?: string;
   onRightIconPress?: () => void;
+  /** Required when the right icon is a button (icon-only controls need a spoken name). */
+  rightIconAccessibilityLabel?: string;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
   testID?: string;
@@ -35,6 +37,7 @@ export const FormTextField: React.FC<FormTextFieldProps> = ({
   leftIcon,
   rightIcon,
   onRightIconPress,
+  rightIconAccessibilityLabel,
   containerStyle,
   inputStyle,
   testID,
@@ -59,7 +62,7 @@ export const FormTextField: React.FC<FormTextFieldProps> = ({
   };
 
   const hasError = !!error;
-  const borderColor = hasError ? colors.erreur : isFocused ? colors.vert : colors.bordure;
+  const borderColor = hasError ? colors.erreur : isFocused ? colors.vert : colors.outlineStrong;
   const backgroundColor = editable ? colors.blanc : colors.surface2;
 
   return (
@@ -80,6 +83,8 @@ export const FormTextField: React.FC<FormTextFieldProps> = ({
             iconColor={isFocused ? colors.vert : colors.horsLigne}
             size={20}
             style={styles.leftIcon}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           />
         ) : null}
 
@@ -104,12 +109,13 @@ export const FormTextField: React.FC<FormTextFieldProps> = ({
             onPress={onRightIconPress}
             style={styles.rightIcon}
             disabled={!onRightIconPress}
+            accessibilityLabel={rightIconAccessibilityLabel}
           />
         ) : null}
       </View>
 
       {hasError ? (
-        <View style={styles.errorContainer}>
+        <View style={styles.errorContainer} accessibilityLiveRegion="polite">
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : helperText ? (
@@ -130,11 +136,11 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   asterisk: {
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   inputContainer: {
     minHeight: 52,
@@ -148,7 +154,7 @@ const styles = StyleSheet.create({
     flex: 1,
     // Avoid spreading typography.presets.bodyLarge — its lineHeight breaks Android TextInput.
     fontSize: 16,
-    fontWeight: '400',
+    fontFamily: typography.fontFamily.regular,
     color: colors.texte,
     paddingVertical: Platform.OS === 'android' ? 10 : spacing.s,
     paddingHorizontal: 0,
@@ -173,7 +179,7 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.presets.bodySmall,
     color: colors.erreur,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
   },
   helperText: {
     ...typography.presets.bodySmall,

@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   container: { padding: spacing.m, paddingBottom: spacing.xxl },
   label: {
     ...typography.presets.labelLarge,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xs,
     color: colors.texte,
   },
@@ -257,6 +257,6 @@ const styles = StyleSheet.create({
   },
   chipTextOn: {
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   filterBtnActive: { backgroundColor: colors.vertClair, borderColor: colors.vert },
   filterText: { ...typography.presets.labelSmall, color: colors.horsLigne },
-  filterTextActive: { color: colors.vert, fontWeight: '700' },
+  filterTextActive: { color: colors.vert, fontFamily: typography.fontFamily.bold },
   signalsList: { gap: spacing.s },
   signalCard: {
     backgroundColor: colors.blanc,
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
+  signalId: { ...typography.presets.labelLarge, color: colors.brun, fontFamily: typography.fontFamily.bold },
   signalTitle: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: 4 },
   producerInfo: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: 4 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.s },

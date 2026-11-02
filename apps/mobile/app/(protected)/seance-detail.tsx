@@ -247,7 +247,7 @@ export default function SeanceDetailScreen() {
               style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
               accessibilityLabel="Modifier"
             >
-              <Text style={{ color: colors.vert, fontWeight: '700' }}>
+              <Text style={{ color: colors.vert, fontFamily: typography.fontFamily.bold }}>
                 {editingMeta ? 'Fermer' : 'Modifier'}
               </Text>
             </Pressable>
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
   },
   summaryLine: {
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   section: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
     color: colors.texte,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   partName: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   meta: {
@@ -524,9 +524,9 @@ const styles = StyleSheet.create({
   attText: {
     ...typography.presets.labelSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
-  attTextOn: { color: colors.vertFonce, fontWeight: '700' },
+  attTextOn: { color: colors.vertFonce, fontFamily: typography.fontFamily.bold },
   photoActions: { flexDirection: 'row', gap: spacing.s, marginBottom: spacing.s },
   half: { flex: 1 },
   full: { flex: 1, alignSelf: 'stretch' },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   retakeText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   photoRow: {
     flexDirection: 'row',

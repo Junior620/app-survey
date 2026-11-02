@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   headerBtnText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   card: {
     backgroundColor: colors.blanc,
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     ...typography.presets.titleMedium,
     color: colors.texte,
     flex: 1,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -298,13 +298,13 @@ const styles = StyleSheet.create({
   },
   section: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   link: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   parcelleCard: {
     flexDirection: 'row',
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.labelLarge,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
   },
   meta: {

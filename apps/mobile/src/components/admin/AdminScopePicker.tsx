@@ -111,12 +111,12 @@ const styles = StyleSheet.create({
   triggerText: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.45)',
+    backgroundColor: colors.scrim,
     justifyContent: 'center',
     padding: spacing.m,
   },
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   option: {
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   optionTextOn: {
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   empty: {
     ...typography.presets.bodySmall,

@@ -1,4 +1,10 @@
-export type UserRole = 'AGENT_TERRAIN' | 'RESPONSABLE_DURABILITE' | 'ADMIN' | 'AUDITEUR';
+export type UserRole =
+  | 'AGENT_TERRAIN'
+  | 'RESPONSABLE_SITE'
+  | 'RESPONSABLE_DURABILITE'
+  | 'REFERENT_PROTECTION'
+  | 'ADMIN'
+  | 'AUDITEUR';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'offline' | 'forbidden';
 

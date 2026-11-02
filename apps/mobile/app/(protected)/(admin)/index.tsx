@@ -39,6 +39,7 @@ import { loadAdminDashboard, type AdminDashboardData } from '../../../src/data/a
 import { getRemoteServiceState } from '../../../src/data/syncService';
 import { formatFirstName, formatRoleLabel } from '../../../src/utils/roleLabels';
 import { haptics } from '../../../src/utils/haptics';
+import { confirmLogout } from '../../../src/utils/confirmLogout';
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -163,6 +164,7 @@ export default function AdminHomeScreen() {
   );
 
   const handleLogout = async () => {
+    if (!(await confirmLogout())) return;
     await logout();
     router.replace('/(public)/s02-login' as never);
   };
@@ -459,13 +461,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.xs,
   },
   sectionTitleInline: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   sectionBlock: {
@@ -479,7 +481,7 @@ const styles = StyleSheet.create({
   link: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   todoCard: {
     backgroundColor: colors.blanc,
@@ -506,7 +508,7 @@ const styles = StyleSheet.create({
   servicesTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   servicesSub: {
     ...typography.presets.bodySmall,

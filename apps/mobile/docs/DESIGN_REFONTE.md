@@ -2,7 +2,8 @@
 
 ## Choix visuels
 
-- **Marque** : logo et nom SCPB Survey conservés ; palette cacao existante (`#205C45`, `#153F31`, `#EAF3ED`, `#F6F7F4`, …).
+- **Marque** : palette dérivée du logo (nov. 2026) — olive `#5E6328` / `#43471B` / `#EEF1DC` (logo `#707430`, `#93A537`), soleil `#F6AD22` / `#FEF3DC` en accent, ocre `#7A5200` pour le texte secondaire, fond ivoire `#F6F7F4`. Les clés de tokens (`vert`, `brun`, …) sont conservées ; nouveaux tokens : `soleil`, `outlineStrong`, `attentionFonce`, `scrim`.
+- **Contraste** : toutes les paires texte/fond ≥ 4,5:1 (WCAG AA), bordures de champs ≥ 3:1 (`outlineStrong`). Ne pas écrire de texte en `soleil` ni en `attention` : utiliser `onSoleil` / `attentionFonce`.
 - **Police** : Source Sans 3 (400/500/600/700) via `@expo-google-fonts/source-sans-3`, chargée dans `app/_layout.tsx`.
 - **Thème unique** : `paperTheme` local branché sur `PaperProvider` (plus de double source `afrexiaTheme` pour Paper).
 - **Tokens** : `colors`, `typography`, `spacing`, `radius`, `shadows`, `motion`, `layout` (`controlHeight` 48, `screenPadding` 16).

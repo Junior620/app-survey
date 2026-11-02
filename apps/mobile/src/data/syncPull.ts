@@ -3,13 +3,29 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { getDatabase, nowIso } from './db';
 import { supabaseClient } from '../services/authService';
 import { absolutePathFor, ensureAttachmentsDir } from './repositories/attachmentsRepository';
+import { ATTACHMENTS_DIR } from './attachmentsPolicy';
 import {
   ATTACHMENTS_BUCKET,
   DEFAULT_COOPERATIVE_ID,
   PULL_MIRROR_TABLES,
   type PullMirrorTable,
 } from './syncConstants';
-import { upsertOpenConflict } from './syncConflicts';
+import { getConflict, markConflictStatus, upsertOpenConflict } from './syncConflicts';
+
+/** Tables applied to local SQLite. Others keep their cursor at zero so a later version backfills them. */
+const PULL_APPLIED_TABLES = new Set<PullMirrorTable>([
+  'sites',
+  'secteurs',
+  'planteurs',
+  'formations',
+  'missions',
+  'survey_responses_remote',
+  'questionnaires_remote',
+  'attachments_meta',
+]);
+
+const PULL_PAGE_SIZE = 100;
+const START_CURSOR = '1970-01-01T00:00:00.000Z';
 
 function bind(v: unknown): string | number | null {
   if (v == null) return null;
@@ -32,24 +48,83 @@ function requireClient() {
   return supabaseClient as unknown as import('@supabase/supabase-js').SupabaseClient;
 }
 
-async function getCursor(cooperativeId: string, table: string): Promise<string> {
+type PullCursor = { updatedAt: string; id: string };
+
+/** Stored as `updated_at|id` so rows sharing a timestamp at a page edge are not skipped. */
+async function getCursor(cooperativeId: string, table: string): Promise<PullCursor> {
   const db = await getDatabase();
   const key = `sync_cursor:${cooperativeId}:${table}`;
   const row = await db.getFirstAsync<{ value: string }>(
     `SELECT value FROM meta WHERE key = ?`,
     [key]
   );
-  return row?.value || '1970-01-01T00:00:00.000Z';
+  const raw = row?.value || START_CURSOR;
+  const sep = raw.indexOf('|');
+  return sep < 0
+    ? { updatedAt: raw, id: '' }
+    : { updatedAt: raw.slice(0, sep), id: raw.slice(sep + 1) };
 }
 
-async function setCursor(cooperativeId: string, table: string, iso: string): Promise<void> {
+async function setCursor(cooperativeId: string, table: string, cursor: PullCursor): Promise<void> {
   const db = await getDatabase();
   const key = `sync_cursor:${cooperativeId}:${table}`;
   await db.runAsync(
     `INSERT INTO meta (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    [key, iso]
+    [key, `${cursor.updatedAt}|${cursor.id}`]
   );
+}
+
+async function recordPullFailure(
+  accountId: string,
+  table: string,
+  row: Record<string, unknown>,
+  message: string
+): Promise<void> {
+  const db = await getDatabase();
+  const ts = nowIso();
+  const rowId = String(row.id ?? '');
+  await db.runAsync(
+    `INSERT INTO sync_pull_failures (
+      id, account_id, table_name, row_id, row_json, last_error, attempt_count, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      row_json = excluded.row_json,
+      last_error = excluded.last_error,
+      attempt_count = sync_pull_failures.attempt_count + 1,
+      updated_at = excluded.updated_at`,
+    [`${table}:${rowId}`, accountId, table, rowId, JSON.stringify(row), message, ts, ts]
+  );
+}
+
+/** Retry rows that failed earlier (e.g. parent not yet pulled) from their stored copy. */
+async function retryPullFailures(
+  table: PullMirrorTable,
+  accountId: string,
+  result: PullResult
+): Promise<void> {
+  const db = await getDatabase();
+  const failures = await db.getAllAsync<{ id: string; row_json: string }>(
+    `SELECT id, row_json FROM sync_pull_failures WHERE account_id = ? AND table_name = ?`,
+    [accountId, table]
+  );
+  for (const failure of failures) {
+    let row: Record<string, unknown>;
+    try {
+      row = JSON.parse(failure.row_json) as Record<string, unknown>;
+    } catch {
+      await db.runAsync(`DELETE FROM sync_pull_failures WHERE id = ?`, [failure.id]);
+      continue;
+    }
+    try {
+      const outcome = await applyRemoteRow(table, row, accountId);
+      if (outcome === 'applied') result.applied += 1;
+      if (outcome === 'conflict') result.conflicts += 1;
+      await db.runAsync(`DELETE FROM sync_pull_failures WHERE id = ?`, [failure.id]);
+    } catch (e) {
+      await recordPullFailure(accountId, table, row, e instanceof Error ? e.message : String(e));
+    }
+  }
 }
 
 async function localRevision(
@@ -94,7 +169,7 @@ async function hasPendingOutbox(entityType: string, entityId: string): Promise<b
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
     `SELECT COUNT(*) as c FROM sync_outbox
-     WHERE entity_type = ? AND entity_id = ? AND transfer_status = 'pending'`,
+     WHERE entity_type = ? AND entity_id = ? AND transfer_status IN ('pending', 'sending', 'blocked')`,
     [entityType, entityId]
   );
   return (row?.c ?? 0) > 0;
@@ -193,16 +268,20 @@ function pickPlanteurNames(payload: Record<string, unknown>): { nom: string; pre
 async function applyRemoteRow(
   table: PullMirrorTable,
   row: Record<string, unknown>,
-  accountId: string
+  accountId: string,
+  force = false
 ): Promise<'applied' | 'conflict' | 'skipped'> {
   const db = await getDatabase();
   const id = String(row.id);
   const remoteRev = Number(row.revision ?? 1);
   const entityType = entityTypeForTable(table);
-  const pending = await hasPendingOutbox(entityType, id);
+  const pending = force ? false : await hasPendingOutbox(entityType, id);
   const localRev = await localRevision(entityType, id, accountId);
 
-  if (pending && localRev != null && localRev >= remoteRev) {
+  if (pending && localRev != null) {
+    // Our unsent edit is newer: the next push overwrites the server, nothing to apply.
+    if (localRev > remoteRev) return 'skipped';
+    // Someone else changed the same record: keep the local edit and ask the user.
     await upsertOpenConflict({
       accountId,
       entityType,
@@ -210,18 +289,8 @@ async function applyRemoteRow(
       localRevision: localRev,
       remoteRevision: remoteRev,
       detail: `Modification locale en attente (rev ${localRev}) vs serveur (rev ${remoteRev}).`,
-    });
-    return 'conflict';
-  }
-
-  if (localRev != null && localRev > remoteRev && pending) {
-    await upsertOpenConflict({
-      accountId,
-      entityType,
-      entityId: id,
-      localRevision: localRev,
-      remoteRevision: remoteRev,
-      detail: `Révision locale ${localRev} plus récente que serveur ${remoteRev}, file non vide.`,
+      tableName: table,
+      remoteRow: row,
     });
     return 'conflict';
   }
@@ -442,7 +511,12 @@ async function applyRemoteRow(
       return 'applied';
     }
     case 'attachments_meta': {
-      const relativePath = String(row.relative_path ?? payload.relative_path ?? '');
+      // Never trust a server-provided path on disk: rebuild it under the attachments folder.
+      const remotePath = String(row.relative_path ?? payload.relative_path ?? '');
+      const ext = /\.[a-z0-9]{1,5}$/i.exec(remotePath)?.[0].toLowerCase() ?? '.bin';
+      const relativePath = remotePath
+        ? `${ATTACHMENTS_DIR}/${safePathSegment(ownerAccount)}/${safePathSegment(id)}${ext}`
+        : '';
       const storagePath = row.storage_path ? String(row.storage_path) : null;
       if (relativePath) {
         await db.runAsync(
@@ -513,6 +587,10 @@ async function applyRemoteRow(
   }
 }
 
+function safePathSegment(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, '_');
+}
+
 async function downloadAttachmentIfMissing(
   storagePath: string,
   relativePath: string,
@@ -559,25 +637,29 @@ export async function pullRemoteChanges(
   };
 
   for (const table of PULL_MIRROR_TABLES) {
+    if (!PULL_APPLIED_TABLES.has(table)) continue;
     try {
+      await retryPullFailures(table, accountId, result);
+
       const cursor = await getCursor(cooperativeId, table);
       const { data, error } = await client
         .from(table)
         .select('*')
         .eq('cooperative_id', cooperativeId)
-        .gt('updated_at', cursor)
+        .or(
+          `updated_at.gt."${cursor.updatedAt}",and(updated_at.eq."${cursor.updatedAt}",id.gt."${cursor.id}")`
+        )
         .order('updated_at', { ascending: true })
-        .limit(100);
+        .order('id', { ascending: true })
+        .limit(PULL_PAGE_SIZE);
 
       if (error) {
         result.errors.push(`${table}: ${error.message}`);
         continue;
       }
 
-      let maxUpdated = cursor;
-      const errorsBefore = result.errors.length;
-      for (const raw of data ?? []) {
-        const row = raw as Record<string, unknown>;
+      const rows = (data ?? []) as Record<string, unknown>[];
+      for (const row of rows) {
         try {
           const outcome = await applyRemoteRow(table, row, accountId);
           if (outcome === 'applied') result.applied += 1;
@@ -585,17 +667,19 @@ export async function pullRemoteChanges(
           if (table === 'attachments_meta' && outcome === 'applied') {
             result.downloadedAttachments += 1;
           }
-          const updated = String(row.updated_at ?? '');
-          if (updated > maxUpdated) maxUpdated = updated;
         } catch (rowErr) {
-          result.errors.push(
-            `${table}: ${rowErr instanceof Error ? rowErr.message : String(rowErr)}`
-          );
+          const message = rowErr instanceof Error ? rowErr.message : String(rowErr);
+          result.errors.push(`${table}: ${message}`);
+          // Kept aside and retried next sync, so one bad row does not stall the table.
+          await recordPullFailure(accountId, table, row, message);
         }
       }
-      // Do not advance past a page that still has row failures (retry next sync).
-      if (maxUpdated > cursor && result.errors.length === errorsBefore) {
-        await setCursor(cooperativeId, table, maxUpdated);
+      const last = rows[rows.length - 1];
+      if (last) {
+        await setCursor(cooperativeId, table, {
+          updatedAt: String(last.updated_at ?? cursor.updatedAt),
+          id: String(last.id ?? ''),
+        });
       }
     } catch (e) {
       result.errors.push(
@@ -615,6 +699,76 @@ export async function getLastPullSummary(cooperativeId: string): Promise<string>
     [key]
   );
   if (!row?.value || row.value.startsWith('1970')) return 'Jamais';
-  return row.value;
+  return row.value.split('|')[0]!;
+}
+
+const LOCAL_TABLE_BY_ENTITY: Record<string, string> = {
+  site: 'sites',
+  secteur: 'secteurs',
+  planteur: 'planteurs',
+  formation: 'formations',
+  mission: 'missions',
+  survey_response: 'survey_responses',
+  questionnaire: 'questionnaires',
+};
+
+/**
+ * Apply the user's choice for a sync conflict.
+ * - remote: write the stored server row locally and drop the unsent local edit.
+ * - local: re-queue the latest local edit with a revision above the server's.
+ */
+export async function resolveConflict(
+  conflictId: string,
+  resolution: 'resolved_local' | 'resolved_remote'
+): Promise<void> {
+  const conflict = await getConflict(conflictId);
+  if (!conflict) return;
+  const db = await getDatabase();
+  const ts = nowIso();
+  const active = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM sync_outbox
+     WHERE entity_type = ? AND entity_id = ? AND transfer_status IN ('pending', 'sending', 'blocked')
+     ORDER BY created_at DESC`,
+    [conflict.entityType, conflict.entityId]
+  );
+
+  if (resolution === 'resolved_remote') {
+    if (conflict.tableName && conflict.remoteRowJson) {
+      const row = JSON.parse(conflict.remoteRowJson) as Record<string, unknown>;
+      await applyRemoteRow(conflict.tableName as PullMirrorTable, row, conflict.accountId, true);
+    }
+    for (const item of active) {
+      await db.runAsync(
+        `UPDATE sync_outbox SET transfer_status = 'acked', last_error = ?, updated_at = ? WHERE id = ?`,
+        ['Remplacé par la version serveur', ts, item.id]
+      );
+    }
+  } else {
+    const nextRevision = Math.max(conflict.localRevision, conflict.remoteRevision) + 1;
+    const [latest, ...older] = active;
+    if (latest) {
+      await db.runAsync(
+        `UPDATE sync_outbox
+         SET transfer_status = 'pending', revision = ?, attempt_count = 0, last_error = NULL,
+             idempotency_key = idempotency_key || ':r' || ?, updated_at = ?
+         WHERE id = ?`,
+        [nextRevision, nextRevision, ts, latest.id]
+      );
+    }
+    for (const item of older) {
+      await db.runAsync(
+        `UPDATE sync_outbox SET transfer_status = 'acked', last_error = ?, updated_at = ? WHERE id = ?`,
+        ['Regroupé dans la dernière modification', ts, item.id]
+      );
+    }
+    const localTable = LOCAL_TABLE_BY_ENTITY[conflict.entityType];
+    if (localTable) {
+      await db.runAsync(`UPDATE ${localTable} SET revision = ? WHERE id = ?`, [
+        nextRevision,
+        conflict.entityId,
+      ]);
+    }
+  }
+  await markConflictStatus(conflictId, resolution);
 }
 

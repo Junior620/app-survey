@@ -18,8 +18,6 @@ export function useReduceMotion(): boolean {
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
     return () => {
       alive = false;
-      // RN typings differ across versions
-      // @ts-expect-error older RN
       sub?.remove?.();
     };
   }, []);

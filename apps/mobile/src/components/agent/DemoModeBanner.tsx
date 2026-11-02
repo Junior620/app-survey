@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   text: {
     ...typography.presets.labelSmall,
     color: colors.attention,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
 });

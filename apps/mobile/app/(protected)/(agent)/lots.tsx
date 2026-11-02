@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   bilanTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.s,
   },
   bilan: {
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.s,
   },
   filterScrollView: {
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   filterText: {
     ...typography.presets.labelMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   filterTextActive: {
     color: colors.blanc,

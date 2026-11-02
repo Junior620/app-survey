@@ -51,7 +51,7 @@ export default function FormationsScreen() {
   const router = useRouter();
   const { goBack } = useSmartBack();
   const segments = useSegments();
-  const isAgentTab = segments.includes('(agent)');
+  const isAgentTab = (segments as string[]).includes('(agent)');
   const { siteId: siteIdParam } = useLocalSearchParams<{ siteId?: string }>();
   const currentSiteId = useSiteContext((s) => s.currentSiteId);
   const siteId = siteIdParam || currentSiteId || undefined;
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
     backgroundColor: colors.surface2,
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
   },
   chipOn: { backgroundColor: colors.vertClair },

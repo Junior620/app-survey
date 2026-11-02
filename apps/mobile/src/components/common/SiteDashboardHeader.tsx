@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.texte,
     textAlign: 'center',
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   siteBlock: {
     paddingLeft: spacing.xxs,
@@ -243,7 +243,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: '700',
     color: colors.texte,
   },
   locality: {
@@ -255,7 +254,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.4)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -284,13 +283,13 @@ const styles = StyleSheet.create({
   menuLabel: {
     ...typography.presets.bodyLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
   logoutLabel: {
     ...typography.presets.bodyLarge,
     color: colors.erreur,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flex: 1,
   },
   divider: {

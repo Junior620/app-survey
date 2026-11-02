@@ -1,13 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { afrexiaTheme } from '@appsurvey/shared';
+import { colors } from '../../src/theme';
 
 export default function PublicLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: afrexiaTheme.colors.background },
+        contentStyle: { backgroundColor: colors.fond },
         animation: 'slide_from_right',
       }}
     >

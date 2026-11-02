@@ -15,6 +15,7 @@ import {
 } from '../../../src/components/common';
 import { colors, radius, spacing, typography, shadows } from '../../../src/theme';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
+import { confirmLogout } from '../../../src/utils/confirmLogout';
 
 export default function DurabiliteHomeScreen() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function DurabiliteHomeScreen() {
   const managerName = profile?.fullName || 'Responsable Durabilité';
 
   const handleLogout = async () => {
+    if (!(await confirmLogout())) return;
     await logout();
     router.replace('/(public)/s02-login');
   };
@@ -196,12 +198,12 @@ const styles = StyleSheet.create({
   logoutHeaderText: {
     ...typography.presets.labelMedium,
     color: colors.erreur,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.l,
     marginBottom: spacing.s,
   },
@@ -230,12 +232,12 @@ const styles = StyleSheet.create({
     ...typography.presets.h1,
     fontSize: 28,
     color: colors.texte,
-    fontWeight: '900',
+    fontFamily: typography.fontFamily.bold,
   },
   metricLabel: {
     ...typography.presets.bodySmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   badgeMargin: {
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
   workspaceTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     flex: 1,
   },
   workspaceDesc: {

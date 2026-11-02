@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   text: {
     ...typography.presets.bodySmall,
     color: colors.erreur,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
     flex: 1,
   },
 });

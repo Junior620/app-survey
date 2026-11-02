@@ -85,6 +85,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.presets.labelMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

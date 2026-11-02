@@ -9,6 +9,9 @@ export type SyncConflict = {
   remoteRevision: number;
   detail: string;
   status: 'open' | 'resolved_local' | 'resolved_remote';
+  /** Remote mirror table and row snapshot, so "keep server" can apply it. */
+  tableName: string | null;
+  remoteRowJson: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,6 +32,8 @@ export async function upsertOpenConflict(params: {
   localRevision: number;
   remoteRevision: number;
   detail: string;
+  tableName?: string | null;
+  remoteRow?: Record<string, unknown> | null;
 }): Promise<void> {
   const db = await getDatabase();
   const ts = nowIso();
@@ -36,12 +41,14 @@ export async function upsertOpenConflict(params: {
   await db.runAsync(
     `INSERT INTO sync_conflicts (
       id, account_id, entity_type, entity_id, local_revision, remote_revision,
-      detail, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+      detail, status, table_name, remote_row_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       local_revision = excluded.local_revision,
       remote_revision = excluded.remote_revision,
       detail = excluded.detail,
+      table_name = COALESCE(excluded.table_name, sync_conflicts.table_name),
+      remote_row_json = COALESCE(excluded.remote_row_json, sync_conflicts.remote_row_json),
       status = 'open',
       updated_at = excluded.updated_at`,
     [
@@ -52,13 +59,25 @@ export async function upsertOpenConflict(params: {
       params.localRevision,
       params.remoteRevision,
       params.detail,
+      params.tableName ?? null,
+      params.remoteRow ? JSON.stringify(params.remoteRow) : null,
       ts,
       ts,
     ]
   );
 }
 
-export async function resolveConflict(
+export async function getConflict(conflictId: string): Promise<SyncConflict | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    `SELECT * FROM sync_conflicts WHERE id = ?`,
+    [conflictId]
+  );
+  return row ? mapConflict(row) : null;
+}
+
+/** Status only. Use `resolveConflict` from syncService to apply the chosen version. */
+export async function markConflictStatus(
   conflictId: string,
   resolution: 'resolved_local' | 'resolved_remote'
 ): Promise<void> {
@@ -79,6 +98,8 @@ function mapConflict(r: Record<string, unknown>): SyncConflict {
     remoteRevision: Number(r.remote_revision ?? 0),
     detail: String(r.detail ?? ''),
     status: r.status as SyncConflict['status'],
+    tableName: r.table_name == null ? null : String(r.table_name),
+    remoteRowJson: r.remote_row_json == null ? null : String(r.remote_row_json),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   };

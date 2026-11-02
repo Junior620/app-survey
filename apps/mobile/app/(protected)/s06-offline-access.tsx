@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   infoValue: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   syncBadgeSurface: {
     backgroundColor: colors.vertClair,
@@ -175,12 +175,12 @@ const styles = StyleSheet.create({
   syncLabel: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   syncDate: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: 2,
   },
   badgeMargin: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     color: colors.erreur,
     ...typography.presets.bodySmall,
     lineHeight: 18,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   actionButton: {
     marginTop: spacing.s,

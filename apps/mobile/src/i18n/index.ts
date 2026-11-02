@@ -24,7 +24,8 @@ export async function initI18n(locale: DisplayLocale = DEFAULT_LOCALE): Promise<
         if (__DEV__) {
           console.warn(`[i18n] Missing key: ${key}`);
         }
-        return undefined as unknown as string;
+        // Missing in FR and EN: show the key rather than an empty label.
+        return key;
       },
       saveMissing: false,
     });

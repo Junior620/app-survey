@@ -6,8 +6,9 @@ import { colors, spacing, typography, layout } from '../../../src/theme';
 import { SemanticIcon } from '../../../src/components/common';
 import { useSyncStatusStore } from '../../../src/stores/useSyncStatusStore';
 import { isImmersivePath } from '../../../src/navigation';
+import { RoleGate, ROLE_AREAS } from '../../../src/navigation';
 
-export default function AgentLayout() {
+function AgentLayoutContent() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
@@ -52,7 +53,7 @@ export default function AgentLayout() {
         options={{
           title: t('tabs.home'),
           tabBarIcon: ({ color }) => (
-            <SemanticIcon name="building" size={layout.iconSize} color={String(color)} />
+            <SemanticIcon name="home" size={layout.iconSize} color={String(color)} />
           ),
           tabBarAccessibilityLabel: t('tabs.homeA11y'),
         }}
@@ -83,9 +84,9 @@ export default function AgentLayout() {
           title: t('tabs.sync'),
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: colors.attention,
+            backgroundColor: colors.attentionFonce,
             color: colors.blanc,
-            fontSize: 11,
+            fontSize: 12,
           },
           tabBarIcon: ({ color }) => (
             <SemanticIcon name="sync" size={layout.iconSize} color={String(color)} />
@@ -98,7 +99,7 @@ export default function AgentLayout() {
         options={{
           title: t('tabs.more'),
           tabBarIcon: ({ color }) => (
-            <SemanticIcon name="settings" size={layout.iconSize} color={String(color)} />
+            <SemanticIcon name="more" size={layout.iconSize} color={String(color)} />
           ),
           tabBarAccessibilityLabel: t('tabs.moreA11y'),
         }}
@@ -110,5 +111,13 @@ export default function AgentLayout() {
       <Tabs.Screen name="visites" options={{ href: null }} />
       <Tabs.Screen name="lots" options={{ href: null }} />
     </Tabs>
+  );
+}
+
+export default function AgentLayout() {
+  return (
+    <RoleGate allow={ROLE_AREAS.agent}>
+      <AgentLayoutContent />
+    </RoleGate>
   );
 }

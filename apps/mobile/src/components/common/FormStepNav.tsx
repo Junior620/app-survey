@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { colors, spacing, typography } from '../../theme';
@@ -22,12 +23,16 @@ export const FormStepNav: React.FC<FormStepNavProps> = ({
   onNext,
   onSaveAndExit,
   showPrevious = true,
-  nextLabel = 'Suivant',
-  previousLabel = 'Précédent',
-  saveExitLabel = 'Enregistrer et quitter',
+  nextLabel: nextLabelProp,
+  previousLabel: previousLabelProp,
+  saveExitLabel: saveExitLabelProp,
   nextLoading = false,
   style,
 }) => {
+  const { t } = useTranslation();
+  const nextLabel = nextLabelProp ?? t('common.next');
+  const previousLabel = previousLabelProp ?? t('common.previous');
+  const saveExitLabel = saveExitLabelProp ?? t('common.saveAndExit');
   const insets = useSafeAreaInsets();
 
   return (
@@ -89,6 +94,6 @@ const styles = StyleSheet.create({
   saveLinkText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

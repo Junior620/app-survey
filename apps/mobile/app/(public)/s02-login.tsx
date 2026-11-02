@@ -77,7 +77,7 @@ export default function S02LoginScreen() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: supabaseReady ? 'christian.momo@ste-scpb.com' : 'agent@scpb.ci',
+      email: __DEV__ && !supabaseReady ? 'agent@scpb.ci' : '',
       password: '',
       rememberMe: true,
     },
@@ -182,12 +182,14 @@ export default function S02LoginScreen() {
                   style={styles.rememberRow}
                   onPress={() => onChange(!value)}
                   activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: !!value }}
+                  accessibilityLabel={t('auth.rememberMe')}
                 >
-                  <Checkbox
-                    status={value ? 'checked' : 'unchecked'}
-                    color={colors.vert}
-                    onPress={() => onChange(!value)}
-                  />
+                  {/* The row is the single control; the box is visual only. */}
+                  <View pointerEvents="none" importantForAccessibility="no-hide-descendants">
+                    <Checkbox status={value ? 'checked' : 'unchecked'} color={colors.vert} />
+                  </View>
                   <Text style={styles.rememberText}>{t('auth.rememberMe')}</Text>
                 </TouchableOpacity>
               )}
@@ -210,7 +212,7 @@ export default function S02LoginScreen() {
         </Card.Content>
       </Card>
 
-      {!supabaseReady ? (
+      {__DEV__ && !supabaseReady ? (
         <View style={styles.demoSection}>
           <Text style={styles.demoTitle}>Comptes démo locaux (RBAC) :</Text>
           <View style={styles.chipRow}>
@@ -310,7 +312,7 @@ const styles = StyleSheet.create({
   welcomeCompact: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
   },
   subtitleText: {
@@ -345,9 +347,9 @@ const styles = StyleSheet.create({
   rememberText: {
     ...typography.presets.bodySmall,
     color: colors.texte,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
   },
-  forgotButton: { minHeight: 36, paddingHorizontal: spacing.xs },
+  forgotButton: { minHeight: 48, paddingHorizontal: spacing.xs },
   loginButton: { marginTop: spacing.s },
   demoSection: {
     marginTop: spacing.xl,
@@ -358,18 +360,18 @@ const styles = StyleSheet.create({
   demoTitle: {
     ...typography.presets.labelSmall,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   chip: { backgroundColor: colors.vertClair },
-  chipText: { ...typography.presets.labelSmall, color: colors.vert, fontWeight: '700' },
+  chipText: { ...typography.presets.labelSmall, color: colors.vert, fontFamily: typography.fontFamily.bold },
   devClear: { marginTop: spacing.l, alignSelf: 'center' },
   snackbar: { backgroundColor: colors.erreur },
   snackbarOk: { backgroundColor: colors.vert },
   langBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.4)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
   },
   langSheet: {
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
   langTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.m,
   },
 });

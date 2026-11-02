@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.s,
   },
   autoSaveTime: {
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
   },
   progressCard: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   prodTitle: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.m,
   },
   progressHeaderRow: {
@@ -190,12 +190,12 @@ const styles = StyleSheet.create({
   progressLabel: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   progressPct: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   progressBarTrack: {
     height: 10,
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   checkLink: {
     ...typography.presets.labelMedium,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   actionBtn: {
     marginBottom: spacing.s,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.s,
     marginBottom: spacing.s,
   },
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
   sectionBadgeText: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   sectionCardTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginVertical: 2,
   },
   sectionCardMeta: {

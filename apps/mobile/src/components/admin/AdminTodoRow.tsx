@@ -69,11 +69,11 @@ const styles = StyleSheet.create({
   problem: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   action: {
     ...typography.presets.labelMedium,
     marginTop: 2,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
 });

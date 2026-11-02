@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Text, StyleSheet, StyleProp, ViewStyle, Animated } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing, typography } from '../../theme';
 import { useReduceMotion, getMotionDuration } from '../../utils/motionUtils';
 
@@ -21,6 +22,7 @@ export const SyncBadge: React.FC<SyncBadgeProps> = ({
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
   const reduceMotion = useReduceMotion();
   const animValue = useRef(new Animated.Value(0.4)).current;
   const scaleValue = useRef(new Animated.Value(0.92)).current;
@@ -52,21 +54,23 @@ export const SyncBadge: React.FC<SyncBadgeProps> = ({
           bg: colors.vertClair,
           fg: colors.vert,
           icon: 'cloud-check-outline' as const,
-          text: label || 'Synchronisé',
+          text: label || t('status.synced'),
         };
       case 'pending':
         return {
           bg: colors.ambreClair,
-          fg: colors.attention,
+          fg: colors.attentionFonce,
           icon: 'cloud-upload-outline' as const,
-          text: label || `En attente${pendingCount ? ` (${pendingCount})` : ''}`,
+          text:
+            label ||
+            (pendingCount ? t('status.pendingCount', { count: pendingCount }) : t('status.pending')),
         };
       case 'error':
         return {
           bg: colors.errorContainer,
           fg: colors.erreur,
           icon: 'cloud-alert-outline' as const,
-          text: label || 'Erreur de synchro',
+          text: label || t('status.syncError'),
         };
       case 'offline':
       default:
@@ -74,7 +78,7 @@ export const SyncBadge: React.FC<SyncBadgeProps> = ({
           bg: colors.surface2,
           fg: colors.texteSecondaire,
           icon: 'cloud-off-outline' as const,
-          text: label || 'Hors ligne',
+          text: label || t('common.offline'),
         };
     }
   };
@@ -114,6 +118,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.presets.labelSmall,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
 });

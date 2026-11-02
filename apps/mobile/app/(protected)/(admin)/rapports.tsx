@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   section: {
     ...typography.presets.titleMedium,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   grid: {
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   kpiValue: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   kpiLabel: {
     ...typography.presets.labelMedium,
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   rowMeta: {
     ...typography.presets.bodySmall,

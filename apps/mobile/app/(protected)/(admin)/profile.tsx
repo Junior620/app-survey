@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   value: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   note: {
     ...typography.presets.bodySmall,

@@ -7,10 +7,12 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { colors, spacing } from '../../theme';
+import { useTranslation } from 'react-i18next';
+import { colors, spacing, typography } from '../../theme';
 
-/** Transparent mark — no black plate behind the artwork. */
-const LOGO = require('../../../assets/branding/scpb-icon.png');
+/** Transparent mark (3:2), no plate behind the artwork. */
+const LOGO = require('../../../assets/branding/scpb-logo-transparent.png');
+const LOGO_RATIO = 1024 / 681;
 
 export interface AppLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -33,20 +35,22 @@ export const AppLogo: React.FC<AppLogoProps> = ({
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
   const s = SIZE[size];
   const showText = !markOnly;
+  const tagline = t('common.brandTagline');
 
   return (
     <View
       style={[styles.container, markOnly && styles.containerCentered, style]}
       testID={testID}
       accessibilityRole="image"
-      accessibilityLabel="SCPB Survey — Collecte et traçabilité du cacao"
+      accessibilityLabel={`${t('common.brand')} — ${tagline}`}
     >
       <Image
         source={LOGO}
         style={{
-          width: s.mark,
+          width: Math.round(s.mark * LOGO_RATIO),
           height: s.mark,
           marginRight: showText ? spacing.s : 0,
         }}
@@ -57,11 +61,11 @@ export const AppLogo: React.FC<AppLogoProps> = ({
         <View style={styles.textContainer}>
           <View style={styles.titleRow}>
             <Text style={[styles.brandPrefix, { fontSize: s.title }]}>SCPB</Text>
-            <Text style={[styles.brandSuffix, { fontSize: s.title }]}> SURVEY</Text>
+            <Text style={[styles.brandSuffix, { fontSize: s.title }]}> Survey</Text>
           </View>
           {showSubtitle ? (
             <Text style={[styles.subtitle, { fontSize: s.subtitle }]}>
-              Collecte et traçabilité du cacao
+              {tagline}
             </Text>
           ) : null}
         </View>
@@ -88,18 +92,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   brandPrefix: {
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.bold,
     color: colors.vert,
     letterSpacing: 0.5,
   },
   brandSuffix: {
-    fontWeight: '800',
+    fontFamily: typography.fontFamily.semibold,
     color: colors.brun,
     letterSpacing: 0.5,
   },
   subtitle: {
+    fontFamily: typography.fontFamily.medium,
     color: colors.texteSecondaire,
-    fontWeight: '500',
     marginTop: 2,
   },
 });

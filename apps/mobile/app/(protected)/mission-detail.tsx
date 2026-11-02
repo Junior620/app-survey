@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   headerBtnText: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   card: {
     backgroundColor: colors.blanc,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.presets.titleSmall,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
     marginBottom: spacing.xs,
   },

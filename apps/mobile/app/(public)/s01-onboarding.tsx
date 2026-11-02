@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   skipText: {
     ...typography.presets.labelLarge,
     color: colors.texteSecondaire,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   scroll: {
     flexGrow: 1,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     color: colors.texte,
     textAlign: 'center',
     marginBottom: spacing.s,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   dotIdle: {
     width: 8,
-    backgroundColor: colors.bordure,
+    backgroundColor: colors.outlineStrong,
   },
   actions: {
     flexDirection: 'row',

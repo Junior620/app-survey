@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
   },
   copy: { ...typography.presets.bodyMedium, color: colors.texte },
   note: { ...typography.presets.bodySmall, color: colors.texteSecondaire },
-  label: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
+  label: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   error: { ...typography.presets.bodySmall, color: colors.erreur },
 });

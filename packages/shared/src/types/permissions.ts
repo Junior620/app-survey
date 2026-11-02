@@ -1,6 +1,6 @@
 import type { UserRole } from './auth';
 
-export type AppRole = UserRole | 'RESPONSABLE_SITE' | 'REFERENT_PROTECTION';
+export type AppRole = UserRole;
 
 export type Permission =
   | 'site.read'

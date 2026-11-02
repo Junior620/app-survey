@@ -28,6 +28,7 @@ import {
   REMEDIATION_STATUS_LABELS,
 } from '../../src/clmrs';
 import type { DetectionRunRecord, RemediationCaseRecord } from '../../src/clmrs';
+import { RoleGate, ROLE_AREAS } from '../../src/navigation';
 
 function priorityFromSeverity(sev: string): 'urgente' | 'haute' | 'moyenne' | 'basse' {
   if (sev === 'CRITICAL') return 'urgente';
@@ -36,7 +37,7 @@ function priorityFromSeverity(sev: string): 'urgente' | 'haute' | 'moyenne' | 'b
   return 'basse';
 }
 
-export default function S75PourquoiCeSignalScreen() {
+function S75PourquoiCeSignalScreenContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ caseId?: string; responseId?: string }>();
   const { user, profile } = useAuthStore();
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   guaranteeTitle: {
     ...typography.presets.labelLarge,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: 2,
   },
   guaranteeMessage: { ...typography.presets.bodySmall, color: colors.texte, lineHeight: 18 },
@@ -308,16 +309,16 @@ const styles = StyleSheet.create({
   axeBadge: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     backgroundColor: colors.vertClair,
     paddingHorizontal: spacing.s,
     paddingVertical: 2,
     borderRadius: radius.s,
   },
-  ruleCode: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
+  ruleCode: { ...typography.presets.labelLarge, color: colors.brun, fontFamily: typography.fontFamily.bold },
   ruleTitle: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: spacing.xs },
   metaText: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: 2 },
-  metaWarn: { ...typography.presets.bodySmall, color: colors.brun, marginBottom: 2, fontWeight: '600' },
+  metaWarn: { ...typography.presets.bodySmall, color: colors.brun, marginBottom: 2, fontFamily: typography.fontFamily.semibold },
   divider: { height: 1, backgroundColor: colors.bordure, marginVertical: spacing.s },
   subTitle: { ...typography.presets.labelLarge, color: colors.texte, marginBottom: spacing.s },
   statusGrid: { flexDirection: 'row', gap: spacing.s },
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
     marginTop: spacing.s,
   },
@@ -342,10 +343,18 @@ const styles = StyleSheet.create({
   ruleCodeBadge: {
     ...typography.presets.labelSmall,
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: 2,
   },
-  ruleName: { ...typography.presets.titleSmall, color: colors.texte, fontWeight: '700' },
+  ruleName: { ...typography.presets.titleSmall, color: colors.texte, fontFamily: typography.fontFamily.bold },
   ruleParams: { ...typography.presets.bodySmall, color: colors.horsLigne },
   actionBtn: { marginTop: spacing.m, marginBottom: spacing.s },
 });
+
+export default function S75PourquoiCeSignalScreen() {
+  return (
+    <RoleGate allow={ROLE_AREAS.protectionCase}>
+      <S75PourquoiCeSignalScreenContent />
+    </RoleGate>
+  );
+}

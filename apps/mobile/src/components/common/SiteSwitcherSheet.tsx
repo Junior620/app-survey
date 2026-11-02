@@ -147,7 +147,7 @@ export function SiteSwitcherSheet({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(25, 39, 32, 0.4)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleMedium,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginBottom: spacing.s,
   },
   search: {
@@ -198,11 +198,11 @@ const styles = StyleSheet.create({
   optionName: {
     ...typography.presets.bodyLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   optionNameOn: {
     color: colors.vertFonce,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   optionLocality: {
     ...typography.presets.bodySmall,

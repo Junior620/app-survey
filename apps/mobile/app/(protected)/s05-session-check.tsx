@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
     marginTop: spacing.m,
   },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   hello: {
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     color: colors.texte,
   },
   meta: {

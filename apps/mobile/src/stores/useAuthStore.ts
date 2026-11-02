@@ -9,6 +9,14 @@ import {
 } from '../services/secureStore';
 import { isSupabaseConfigured } from '../services/supabaseConfig';
 
+/** How long a field agent may keep working offline after the last online sign-in. */
+const OFFLINE_GRACE_MS = 7 * 24 * 3600 * 1000;
+
+function withinOfflineGrace(savedAt: string | undefined): boolean {
+  const last = savedAt ? Date.parse(savedAt) : NaN;
+  return !Number.isNaN(last) && Date.now() - last <= OFFLINE_GRACE_MS;
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   status: 'unauthenticated',
   user: null,
@@ -73,7 +81,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             return;
           }
 
-          if (isOffline && !isSupabaseConfigured()) {
+          // The 1 h access token expires in the field; keep the agent working offline for a while.
+          if (isOffline && (!isSupabaseConfigured() || withinOfflineGrace(savedSession.savedAt))) {
             const userRole =
               savedSession.profile?.role ||
               (savedSession.user?.role as UserRole) ||
@@ -198,7 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const isExpired = savedSession.expiresAt < Date.now();
       const state = get();
 
-      if (!isExpired || state.isOffline) {
+      if (!isExpired || (state.isOffline && withinOfflineGrace(savedSession.savedAt))) {
         const userRole = savedSession.profile?.role || 'AGENT_TERRAIN';
         set({
           status: state.isOffline ? 'offline' : 'authenticated',

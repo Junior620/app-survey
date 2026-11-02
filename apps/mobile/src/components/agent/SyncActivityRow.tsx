@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   listCard: {
     backgroundColor: colors.blanc,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.bodyLarge,
     color: colors.texte,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   datetime: {
     ...typography.presets.labelSmall,

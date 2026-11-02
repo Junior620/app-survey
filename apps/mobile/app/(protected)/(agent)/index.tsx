@@ -29,7 +29,6 @@ import { useSyncStatusStore } from '../../../src/stores/useSyncStatusStore';
 import { useDemoModeStore } from '../../../src/stores/useDemoModeStore';
 import { useSiteContext } from '../../../src/stores/useSiteContext';
 import { ensureDemoSeed, listSitesForAccount, requestAutoSync } from '../../../src/data';
-import { purgeLocalSurveysOf8Oct2026 } from '../../../src/data/purgeLocalSurveysOf8Oct2026';
 import { refreshUiCounts } from '../../../src/data/autoSync';
 import { pullRemoteChanges, resolveCooperativeId } from '../../../src/data/syncService';
 import { listRemediationCases } from '../../../src/clmrs';
@@ -40,6 +39,7 @@ import {
   type ResumeActivity,
 } from '../../../src/navigation';
 import { haptics } from '../../../src/utils/haptics';
+import { confirmLogout } from '../../../src/utils/confirmLogout';
 
 /** Avoid re-alerting the same returned cases every Sites focus. */
 const alertedReturnedCaseIds = new Set<string>();
@@ -156,7 +156,6 @@ export default function SitesListScreen() {
         try {
           await refreshUiCounts(accountId);
           try {
-            await purgeLocalSurveysOf8Oct2026(accountId);
             setResumeActivity(await resolveResumeActivity(accountId));
           } catch {
             setResumeActivity(null);
@@ -208,6 +207,7 @@ export default function SitesListScreen() {
   };
 
   const handleLogout = async () => {
+    if (!(await confirmLogout())) return;
     haptics.selection();
     await logout();
     router.replace('/(public)/s02-login' as never);
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   logoutText: {
     ...typography.presets.labelMedium,
     color: colors.erreur,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   body: {
     flex: 1,

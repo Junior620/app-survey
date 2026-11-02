@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.bordure,
     backgroundColor: colors.blanc,
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
   },
   filterOn: {
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   filterTextOn: {
     color: colors.vert,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   card: {
     flexDirection: 'row',
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   meta: {
     ...typography.presets.bodySmall,

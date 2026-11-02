@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   name: {
     ...typography.presets.titleSmall,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   secondary: {
     ...typography.presets.bodySmall,
@@ -111,12 +111,12 @@ const styles = StyleSheet.create({
   weight: {
     ...typography.presets.labelLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   share: {
     ...typography.presets.labelMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
   },
   barTrack: {
     height: 4,

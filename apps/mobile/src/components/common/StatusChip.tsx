@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing, typography } from '../../theme';
 
 export type StatusType = 'valide' | 'encours' | 'rejete' | 'brouillon' | 'synchro' | 'incomplet';
@@ -18,6 +19,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
   style,
   testID,
 }) => {
+  const { t } = useTranslation();
   const getStatusConfig = (st: string) => {
     switch (st.toLowerCase()) {
       case 'valide':
@@ -27,16 +29,16 @@ export const StatusChip: React.FC<StatusChipProps> = ({
           bg: colors.vertClair,
           fg: colors.vert,
           icon: 'check-circle-outline' as const,
-          text: label || 'Validé',
+          text: label || t('status.validated'),
         };
       case 'encours':
       case 'en_cours':
       case 'in_progress':
         return {
           bg: colors.ambreClair,
-          fg: colors.attention,
+          fg: colors.attentionFonce,
           icon: 'progress-clock' as const,
-          text: label || 'En cours',
+          text: label || t('status.in_progress'),
         };
       case 'rejete':
       case 'rejeté':
@@ -45,7 +47,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
           bg: colors.errorContainer,
           fg: colors.erreur,
           icon: 'close-circle-outline' as const,
-          text: label || 'Rejeté',
+          text: label || t('status.rejected'),
         };
       case 'brouillon':
       case 'draft':
@@ -53,7 +55,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
           bg: colors.surface2,
           fg: colors.texteSecondaire,
           icon: 'file-document-outline' as const,
-          text: label || 'Brouillon',
+          text: label || t('status.draft'),
         };
       case 'synchro':
       case 'synced':
@@ -61,16 +63,16 @@ export const StatusChip: React.FC<StatusChipProps> = ({
           bg: colors.vertClair,
           fg: colors.vert,
           icon: 'sync' as const,
-          text: label || 'Synchronisé',
+          text: label || t('status.synced'),
         };
       case 'incomplet':
       case 'incomplete':
       default:
         return {
           bg: colors.ambreClair,
-          fg: colors.attention,
+          fg: colors.attentionFonce,
           icon: 'alert-circle-outline' as const,
-          text: label || 'Incomplet',
+          text: label || t('status.incomplete'),
         };
     }
   };
@@ -86,7 +88,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
       ]}
       testID={testID}
       accessibilityRole="text"
-      accessibilityLabel={`Statut : ${config.text}`}
+      accessibilityLabel={t('status.a11y', { label: config.text })}
     >
       <Icon source={config.icon} size={14} color={config.fg} />
       <Text style={[styles.text, { color: config.fg }]} numberOfLines={2}>
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.presets.labelMedium,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     flexShrink: 1,
   },
 });

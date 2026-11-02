@@ -56,13 +56,13 @@ const styles = StyleSheet.create({
   label: {
     ...typography.presets.labelMedium,
     color: colors.vert,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.semibold,
     marginBottom: spacing.xs,
   },
   producer: {
     ...typography.presets.titleLarge,
     color: colors.texte,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
   },
   code: {
     ...typography.presets.bodyMedium,
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   section: {
     ...typography.presets.bodyMedium,
     color: colors.texte,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.medium,
   },
   updated: {
     ...typography.presets.bodySmall,

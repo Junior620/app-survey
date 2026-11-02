@@ -51,6 +51,6 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     gap: spacing.s,
   },
-  title: { ...typography.presets.titleMedium, color: colors.texte, fontWeight: '700' },
+  title: { ...typography.presets.titleMedium, color: colors.texte, fontFamily: typography.fontFamily.bold },
   row: { ...typography.presets.bodyMedium, color: colors.texte },
 });

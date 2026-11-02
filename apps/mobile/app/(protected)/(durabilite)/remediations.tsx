@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.presets.labelLarge,
     color: colors.brun,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bold,
     marginTop: spacing.m,
     marginBottom: spacing.s,
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  id: { ...typography.presets.labelLarge, color: colors.brun, fontWeight: '700' },
+  id: { ...typography.presets.labelLarge, color: colors.brun, fontFamily: typography.fontFamily.bold },
   title: { ...typography.presets.titleMedium, color: colors.texte, marginBottom: 4 },
   meta: { ...typography.presets.bodySmall, color: colors.horsLigne, marginBottom: spacing.s },
   openBtn: { alignSelf: 'flex-start' },
