@@ -1,17 +1,19 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
+import type { AppDatabase } from './db';
+// Not imported from ./db: db.ts imports this module at runtime.
+import { runTransaction } from './sqliteQueue';
 
 /** Schema migrations only — never seed sample data here. */
 export const SCHEMA_VERSION = 7;
 
-export async function runMigrations(db: SQLiteDatabase): Promise<void> {
+export async function runMigrations(db: AppDatabase): Promise<void> {
   await db.execAsync('PRAGMA foreign_keys = ON;');
 
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let version = row?.user_version ?? 0;
 
   if (version < 1) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS meta (
           key TEXT PRIMARY KEY NOT NULL,
           value TEXT NOT NULL
@@ -274,14 +276,14 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_outbox_pending ON sync_outbox(account_id, transfer_status);
         CREATE INDEX IF NOT EXISTS idx_missions_agent ON missions(agent_id, status);
       `);
-      await db.execAsync(`PRAGMA user_version = 1`);
+      await tx.execAsync(`PRAGMA user_version = 1`);
     });
     version = 1;
   }
 
   if (version < 2) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS survey_responses (
           id TEXT PRIMARY KEY NOT NULL,
           account_id TEXT NOT NULL,
@@ -300,14 +302,14 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         );
         CREATE INDEX IF NOT EXISTS idx_survey_account ON survey_responses(account_id, business_status);
       `);
-      await db.execAsync(`PRAGMA user_version = 2`);
+      await tx.execAsync(`PRAGMA user_version = 2`);
     });
     version = 2;
   }
 
   if (version < 3) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS questionnaires (
           id TEXT PRIMARY KEY NOT NULL,
           account_id TEXT NOT NULL,
@@ -408,14 +410,14 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_qq_vid ON questionnaire_questions(version_id);
         CREATE INDEX IF NOT EXISTS idx_qa_site ON questionnaire_assignments(site_id, status);
       `);
-      await db.execAsync(`PRAGMA user_version = 3`);
+      await tx.execAsync(`PRAGMA user_version = 3`);
     });
     version = 3;
   }
 
   if (version < 4) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS sync_conflicts (
           id TEXT PRIMARY KEY NOT NULL,
           account_id TEXT NOT NULL,
@@ -431,14 +433,14 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_sync_conflicts_open
           ON sync_conflicts(account_id, status);
       `);
-      await db.execAsync(`PRAGMA user_version = 4`);
+      await tx.execAsync(`PRAGMA user_version = 4`);
     });
     version = 4;
   }
 
   if (version < 5) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS rule_packs (
           id TEXT PRIMARY KEY NOT NULL,
           country TEXT NOT NULL,
@@ -536,13 +538,13 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_remediation_events_case
           ON remediation_case_events(case_id, created_at);
       `);
-      await db.execAsync(`PRAGMA user_version = 5`);
+      await tx.execAsync(`PRAGMA user_version = 5`);
     });
   }
 
   if (version < 6) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS survey_consents (
           id TEXT PRIMARY KEY NOT NULL,
           account_id TEXT NOT NULL,
@@ -567,24 +569,24 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_survey_consents_planteur
           ON survey_consents(account_id, planteur_id, status);
       `);
-      await db.execAsync(`PRAGMA user_version = 6`);
+      await tx.execAsync(`PRAGMA user_version = 6`);
     });
   }
 
   if (version < 7) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_name TEXT`);
-      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone_status TEXT`);
-      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone TEXT`);
-      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone_status TEXT`);
-      await db.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone TEXT`);
-      await db.execAsync(`PRAGMA user_version = 7`);
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_name TEXT`);
+      await tx.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone_status TEXT`);
+      await tx.execAsync(`ALTER TABLE survey_consents ADD COLUMN respondent_phone TEXT`);
+      await tx.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone_status TEXT`);
+      await tx.execAsync(`ALTER TABLE survey_consents ADD COLUMN other_household_phone TEXT`);
+      await tx.execAsync(`PRAGMA user_version = 7`);
     });
   }
 
   if (version < 8) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(`
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
         CREATE TABLE IF NOT EXISTS sync_pull_failures (
           id TEXT PRIMARY KEY NOT NULL,
           account_id TEXT NOT NULL,
@@ -602,9 +604,9 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
           ON sync_outbox(entity_type, entity_id, transfer_status);
       `);
       // Remote snapshot so "keep server version" can actually apply it.
-      await db.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN table_name TEXT`);
-      await db.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN remote_row_json TEXT`);
-      await db.execAsync(`PRAGMA user_version = 8`);
+      await tx.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN table_name TEXT`);
+      await tx.execAsync(`ALTER TABLE sync_conflicts ADD COLUMN remote_row_json TEXT`);
+      await tx.execAsync(`PRAGMA user_version = 8`);
     });
   }
 }

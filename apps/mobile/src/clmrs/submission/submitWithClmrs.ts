@@ -7,7 +7,7 @@ import {
   type ConsistencyFlag,
   type HouseholdEvaluation,
 } from '@appsurvey/clmrs-engine';
-import { getDatabase, newId, nowIso } from '../../data/db';
+import { getDatabase, newId, nowIso, runTransaction } from '../../data/db';
 import { enqueueOutboxInTx } from '../../data/repositories/outboxRepository';
 import { getSurveyResponse } from '../../data/repositories/surveyResponsesRepository';
 import {
@@ -105,8 +105,8 @@ export async function submitSurveyWithClmrs(input: {
     }
   }
 
-  await db.withTransactionAsync(async () => {
-    const existing = await db.getFirstAsync<{ id: string; revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const existing = await tx.getFirstAsync<{ id: string; revision: number }>(
       `SELECT id, revision FROM survey_responses WHERE id = ? AND account_id = ?`,
       [responseId, input.accountId]
     );
@@ -114,7 +114,7 @@ export async function submitSurveyWithClmrs(input: {
     let revision = 1;
     if (existing) {
       revision = existing.revision + 1;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE survey_responses SET
           payload_json = ?, current_step = 1, business_status = 'submitted', updated_at = ?,
           revision = ?, transfer_status = 'pending',
@@ -132,6 +132,7 @@ export async function submitSurveyWithClmrs(input: {
         ]
       );
       await enqueueOutboxInTx(
+        tx,
         input.accountId,
         'survey_response',
         responseId,
@@ -140,7 +141,7 @@ export async function submitSurveyWithClmrs(input: {
         revision
       );
     } else {
-      await db.runAsync(
+      await tx.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, target_type, target_id,
           business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision
@@ -159,6 +160,7 @@ export async function submitSurveyWithClmrs(input: {
         ]
       );
       await enqueueOutboxInTx(
+        tx,
         input.accountId,
         'survey_response',
         responseId,
@@ -185,14 +187,14 @@ export async function submitSurveyWithClmrs(input: {
         engine: childResult.engineVersion,
       });
 
-      const prior = await db.getFirstAsync<{ id: string }>(
+      const prior = await tx.getFirstAsync<{ id: string }>(
         `SELECT id FROM detection_runs
          WHERE survey_response_id = ? AND enfant_id = ? AND rule_pack_id = ?
          ORDER BY created_at DESC LIMIT 1`,
         [responseId, enfantId, packId]
       );
 
-      const { runId, inserted } = await saveDetectionRunInTx({
+      const { runId, inserted } = await saveDetectionRunInTx(tx, {
         accountId: input.accountId,
         surveyResponseId: responseId,
         enfantId,
@@ -206,7 +208,7 @@ export async function submitSurveyWithClmrs(input: {
       });
 
       if (inserted) {
-        await saveSignalsInTx(input.accountId, runId, childResult.triggeredRules);
+        await saveSignalsInTx(tx, input.accountId, runId, childResult.triggeredRules);
       }
 
       const needsCase =
@@ -215,7 +217,7 @@ export async function submitSurveyWithClmrs(input: {
         childResult.evaluationStatus === 'DETECTION_PENDING';
 
       if (needsCase) {
-        const { caseId, created } = await createRemediationCaseInTx({
+        const { caseId, created } = await createRemediationCaseInTx(tx, {
           accountId: input.accountId,
           surveyResponseId: responseId,
           enfantId,
@@ -231,6 +233,7 @@ export async function submitSurveyWithClmrs(input: {
 
         if (created || inserted) {
           await enqueueOutboxInTx(
+            tx,
             input.accountId,
             'detection_result',
             runId,
@@ -250,6 +253,7 @@ export async function submitSurveyWithClmrs(input: {
 
         if (created) {
           await enqueueOutboxInTx(
+            tx,
             input.accountId,
             'remediation_case',
             caseId,
@@ -273,6 +277,7 @@ export async function submitSurveyWithClmrs(input: {
         if (childResult.protectionImmediate || childResult.severity === 'CRITICAL') {
           criticalAlert = true;
           await enqueueOutboxInTx(
+            tx,
             input.accountId,
             'critical_case',
             caseId,

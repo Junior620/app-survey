@@ -1,5 +1,5 @@
 import type { SurveyAnswerMap } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import type { ResponseTree } from '../../survey/responseTree';
 
@@ -119,14 +119,14 @@ export async function saveSurveyResponse(input: {
     : { ...input.answers, meta: input.meta };
   const id = input.responseId ?? newId();
 
-  await db.withTransactionAsync(async () => {
-    const existing = await db.getFirstAsync<{ id: string; revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const existing = await tx.getFirstAsync<{ id: string; revision: number }>(
       `SELECT id, revision FROM survey_responses WHERE id = ? AND account_id = ?`,
       [id, input.accountId]
     );
     if (existing) {
       const revision = existing.revision + 1;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE survey_responses SET
           payload_json = ?, current_step = ?, business_status = ?, updated_at = ?,
           revision = ?, transfer_status = 'pending',
@@ -147,6 +147,7 @@ export async function saveSurveyResponse(input: {
       );
       if (input.businessStatus !== 'preview') {
         await enqueueOutboxInTx(
+          tx,
           input.accountId,
           'survey_response',
           id,
@@ -156,7 +157,7 @@ export async function saveSurveyResponse(input: {
         );
       }
     } else {
-      await db.runAsync(
+      await tx.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, target_type, target_id,
           business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision
@@ -177,7 +178,7 @@ export async function saveSurveyResponse(input: {
         ]
       );
       if (input.businessStatus !== 'preview') {
-        await enqueueOutboxInTx(input.accountId, 'survey_response', id, 'create', payload, 1);
+        await enqueueOutboxInTx(tx, input.accountId, 'survey_response', id, 'create', payload, 1);
       }
     }
   });

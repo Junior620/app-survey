@@ -1,11 +1,10 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
-import { getDatabase, newId, nowIso, setDatabaseSeed } from '../../data/db';
+import { getDatabase, newId, nowIso, setDatabaseSeed, type AppDatabase } from '../../data/db';
 import type { RulePack, FactMapping } from '@appsurvey/clmrs-engine';
 import { loadEmbeddedCmPack, validateRulePack } from '@appsurvey/clmrs-engine';
 import protectionEnfantV1 from '../mappings/protection_enfant_v1.json';
 
 /** Seed immutable published CM pack + protection_enfant mapping (idempotent). */
-export async function ensureClmrsSeeds(dbOverride?: SQLiteDatabase): Promise<void> {
+export async function ensureClmrsSeeds(dbOverride?: AppDatabase): Promise<void> {
   // Important: when called from getDatabase(), pass the open db to avoid deadlock
   // (getDatabase awaiting ensureClmrsSeeds awaiting getDatabase).
   const db = dbOverride ?? (await getDatabase());

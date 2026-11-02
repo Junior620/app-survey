@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../../data/db';
+import { getDatabase, newId, nowIso, runTransaction, type DbTx } from '../../data/db';
 import { enqueueOutboxInTx } from '../../data/repositories/outboxRepository';
 import {
   assertTransition,
@@ -34,7 +34,7 @@ export type RemediationCaseEvent = {
   createdAt: string;
 };
 
-export async function createRemediationCaseInTx(input: {
+export async function createRemediationCaseInTx(tx: DbTx, input: {
   accountId: string;
   surveyResponseId: string;
   enfantId: string | null;
@@ -46,10 +46,8 @@ export async function createRemediationCaseInTx(input: {
   actorId?: string | null;
   actorRole?: string | null;
 }): Promise<{ caseId: string; created: boolean }> {
-  const db = await getDatabase();
-
   // One open case per response+child (avoid duplicates on resubmit)
-  const existing = await db.getFirstAsync<{ id: string }>(
+  const existing = await tx.getFirstAsync<{ id: string }>(
     `SELECT id FROM remediation_cases
      WHERE account_id = ? AND survey_response_id = ?
        AND IFNULL(enfant_id, '') = IFNULL(?, '')
@@ -62,7 +60,7 @@ export async function createRemediationCaseInTx(input: {
 
   const id = newId();
   const ts = nowIso();
-  await db.runAsync(
+  await tx.runAsync(
     `INSERT INTO remediation_cases (
       id, account_id, survey_response_id, enfant_id, household_id, detection_run_id,
       primary_status, severity, status, protection_immediate, supervisor_ack_at,
@@ -83,7 +81,7 @@ export async function createRemediationCaseInTx(input: {
     ]
   );
 
-  await appendCaseEventInTx({
+  await appendCaseEventInTx(tx, {
     caseId: id,
     accountId: input.accountId,
     fromStatus: null,
@@ -97,7 +95,7 @@ export async function createRemediationCaseInTx(input: {
   return { caseId: id, created: true };
 }
 
-export async function appendCaseEventInTx(input: {
+export async function appendCaseEventInTx(tx: DbTx, input: {
   caseId: string;
   accountId: string;
   fromStatus: string | null;
@@ -107,9 +105,8 @@ export async function appendCaseEventInTx(input: {
   actorRole: string | null;
   metadata?: Record<string, unknown> | null;
 }): Promise<string> {
-  const db = await getDatabase();
   const id = newId();
-  await db.runAsync(
+  await tx.runAsync(
     `INSERT INTO remediation_case_events (
       id, case_id, account_id, from_status, to_status, reason,
       actor_id, actor_role, metadata_json, created_at
@@ -147,14 +144,14 @@ export async function transitionRemediationCase(input: {
 
   const ts = nowIso();
   let nextRevision = current.revision + 1;
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `UPDATE remediation_cases
        SET status = ?, updated_at = ?, revision = revision + 1
        WHERE id = ? AND account_id = ?`,
       [input.toStatus, ts, input.caseId, input.accountId]
     );
-    await appendCaseEventInTx({
+    await appendCaseEventInTx(tx, {
       caseId: input.caseId,
       accountId: input.accountId,
       fromStatus: current.status,
@@ -165,6 +162,7 @@ export async function transitionRemediationCase(input: {
       metadata: input.metadata ?? null,
     });
     await enqueueOutboxInTx(
+      tx,
       input.accountId,
       'remediation_case',
       input.caseId,
@@ -207,13 +205,13 @@ export async function acknowledgeSupervisor(
   const ts = nowIso();
   const db = await getDatabase();
   const nextRevision = current.revision + 1;
-  await db.withTransactionAsync(async () => {
-    await markSupervisorAckInTx(accountId, caseId, ts);
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await markSupervisorAckInTx(tx, accountId, caseId, ts);
+    await tx.runAsync(
       `UPDATE remediation_cases SET revision = ? WHERE id = ? AND account_id = ?`,
       [nextRevision, caseId, accountId]
     );
-    await appendCaseEventInTx({
+    await appendCaseEventInTx(tx, {
       caseId,
       accountId,
       fromStatus: current.status,
@@ -224,6 +222,7 @@ export async function acknowledgeSupervisor(
       metadata: { ackAt: ts },
     });
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'remediation_case',
       caseId,
@@ -299,12 +298,12 @@ export async function listCaseEvents(
 }
 
 export async function markSupervisorAckInTx(
+  tx: DbTx,
   accountId: string,
   caseId: string,
   ackAt: string
 ): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
+  await tx.runAsync(
     `UPDATE remediation_cases SET supervisor_ack_at = ?, updated_at = ?
      WHERE id = ? AND account_id = ?`,
     [ackAt, ackAt, caseId, accountId]

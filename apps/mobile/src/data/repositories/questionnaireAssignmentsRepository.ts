@@ -1,5 +1,5 @@
 import type { AppRole, AssignmentFrequency } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import { assertQuestionnaireAdmin } from '../../survey/assertQuestionnaireAdmin';
 import { getQuestionnaire } from './questionnairesRepository';
@@ -95,9 +95,9 @@ export async function upsertAssignments(
   const versionNumber = q.publishedVersion ?? 1;
   const ts = nowIso();
 
-  await db.withTransactionAsync(async () => {
+  await runTransaction(db, async (tx) => {
     // Soft-close assignments not in selection
-    const existing = await db.getAllAsync<{ id: string; site_id: string }>(
+    const existing = await tx.getAllAsync<{ id: string; site_id: string }>(
       `SELECT id, site_id FROM questionnaire_assignments
        WHERE questionnaire_id = ? AND account_id = ? AND status = 'active'`,
       [questionnaireId, accountId]
@@ -105,7 +105,7 @@ export async function upsertAssignments(
     const selected = new Set(input.siteIds);
     for (const row of existing) {
       if (!selected.has(row.site_id)) {
-        await db.runAsync(
+        await tx.runAsync(
           `UPDATE questionnaire_assignments SET status = 'archived', updated_at = ? WHERE id = ?`,
           [ts, row.id]
         );
@@ -115,7 +115,7 @@ export async function upsertAssignments(
     for (const siteId of input.siteIds) {
       const found = existing.find((e) => e.site_id === siteId);
       if (found) {
-        await db.runAsync(
+        await tx.runAsync(
           `UPDATE questionnaire_assignments SET
             version_number = ?, campaign = ?, starts_at = ?, ends_at = ?,
             frequency_rule = ?, agent_scope = ?, updated_at = ?
@@ -132,6 +132,7 @@ export async function upsertAssignments(
           ]
         );
         await enqueueOutboxInTx(
+          tx,
           accountId,
           'questionnaire_assignment',
           found.id,
@@ -141,7 +142,7 @@ export async function upsertAssignments(
         );
       } else {
         const id = newId();
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO questionnaire_assignments (
             id, account_id, questionnaire_id, version_number, site_id, secteur_id,
             campaign, starts_at, ends_at, frequency_rule, agent_scope, status, created_at, updated_at
@@ -162,6 +163,7 @@ export async function upsertAssignments(
           ]
         );
         await enqueueOutboxInTx(
+          tx,
           accountId,
           'questionnaire_assignment',
           id,
@@ -171,7 +173,7 @@ export async function upsertAssignments(
         );
       }
     }
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE questionnaires SET updated_at = ?, revision = revision + 1 WHERE id = ? AND account_id = ?`,
       [ts, questionnaireId, accountId]
     );

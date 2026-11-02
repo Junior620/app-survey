@@ -1,4 +1,4 @@
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 
 export type AttendanceStatus = 'not_marked' | 'present' | 'absent' | 'excused';
@@ -76,8 +76,8 @@ export async function createFormation(
   const id = newId();
   const ts = nowIso();
   const payload = { id, ...input, status: 'planned', revision: 1 };
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO formations (
         id, account_id, site_id, title, theme, objectives, lieu, formateur,
         status, starts_at, ends_at, created_at, updated_at, revision
@@ -96,7 +96,7 @@ export async function createFormation(
         ts,
       ]
     );
-    await enqueueOutboxInTx(accountId, 'formation', id, 'create', payload, 1);
+    await enqueueOutboxInTx(tx, accountId, 'formation', id, 'create', payload, 1);
   });
   return id;
 }
@@ -115,8 +115,8 @@ export async function updateFormation(
 ) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number; status: string }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number; status: string }>(
       `SELECT revision, status FROM formations WHERE id = ? AND account_id = ?`,
       [formationId, accountId]
     );
@@ -135,7 +135,7 @@ export async function updateFormation(
       startsAt: input.startsAt ?? null,
       revision,
     };
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE formations SET title = ?, theme = ?, objectives = ?, lieu = ?, formateur = ?,
        starts_at = COALESCE(?, starts_at), updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
@@ -152,7 +152,7 @@ export async function updateFormation(
         accountId,
       ]
     );
-    await enqueueOutboxInTx(accountId, 'formation', formationId, 'update', payload, revision);
+    await enqueueOutboxInTx(tx, accountId, 'formation', formationId, 'update', payload, revision);
   });
 }
 
@@ -163,8 +163,8 @@ export async function updateSeance(
 ) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number; status: string }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number; status: string }>(
       `SELECT revision, status FROM seances WHERE id = ? AND account_id = ?`,
       [seanceId, accountId]
     );
@@ -180,26 +180,26 @@ export async function updateSeance(
       lieu: input.lieu ?? null,
       revision,
     };
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE seances SET starts_at = ?, ends_at = COALESCE(?, ends_at), lieu = ?, updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [payload.startsAt, payload.endsAt, payload.lieu, ts, revision, seanceId, accountId]
     );
-    await enqueueOutboxInTx(accountId, 'seance', seanceId, 'update', payload, revision);
+    await enqueueOutboxInTx(tx, accountId, 'seance', seanceId, 'update', payload, revision);
   });
 }
 
 export async function cancelFormation(accountId: string, formationId: string) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number }>(
       `SELECT revision FROM formations WHERE id = ? AND account_id = ?`,
       [formationId, accountId]
     );
     if (!row) throw new Error('Formation introuvable');
     // Refuse hard delete if participations exist
-    const hasPresence = await db.getFirstAsync<{ c: number }>(
+    const hasPresence = await tx.getFirstAsync<{ c: number }>(
       `SELECT COUNT(*) as c FROM participations p
        JOIN seances s ON s.id = p.seance_id
        WHERE s.formation_id = ? AND p.attendance != 'not_marked'`,
@@ -207,11 +207,12 @@ export async function cancelFormation(accountId: string, formationId: string) {
     );
     if ((hasPresence?.c ?? 0) > 0) {
       const revision = row.revision + 1;
-      await db.runAsync(
+      await tx.runAsync(
         `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
         [ts, revision, formationId, accountId]
       );
       await enqueueOutboxInTx(
+        tx,
         accountId,
         'formation',
         formationId,
@@ -222,11 +223,12 @@ export async function cancelFormation(accountId: string, formationId: string) {
       return;
     }
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [ts, revision, formationId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'formation',
       formationId,
@@ -265,17 +267,17 @@ export async function createSeance(
   const id = newId();
   const ts = nowIso();
   const payload = { id, ...input, status: 'planned', revision: 1 };
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO seances (
         id, account_id, formation_id, starts_at, ends_at, lieu, status, comment,
         created_at, updated_at, revision
       ) VALUES (?, ?, ?, ?, NULL, ?, 'planned', NULL, ?, ?, 1)`,
       [id, accountId, input.formationId, input.startsAt, input.lieu ?? null, ts, ts]
     );
-    await enqueueOutboxInTx(accountId, 'seance', id, 'create', payload, 1);
+    await enqueueOutboxInTx(tx, accountId, 'seance', id, 'create', payload, 1);
     // Move parent formation to in_progress when first seance created
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE formations SET status = CASE WHEN status = 'planned' THEN 'in_progress' ELSE status END,
        updated_at = ? WHERE id = ? AND account_id = ?`,
       [ts, input.formationId, accountId]
@@ -287,19 +289,20 @@ export async function createSeance(
 export async function closeSeance(accountId: string, seanceId: string, comment: string | null) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number }>(
       `SELECT revision FROM seances WHERE id = ? AND account_id = ?`,
       [seanceId, accountId]
     );
     if (!row) throw new Error('Séance introuvable');
     const revision = row.revision + 1;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE seances SET status = 'closed', ends_at = ?, comment = ?, updated_at = ?, revision = ?
        WHERE id = ? AND account_id = ?`,
       [ts, comment, ts, revision, seanceId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'seance',
       seanceId,
@@ -348,15 +351,15 @@ export async function addParticipant(
     attendance: 'not_marked' as const,
     revision: 1,
   };
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
+  await runTransaction(db, async (tx) => {
+    await tx.runAsync(
       `INSERT INTO participations (
         id, account_id, seance_id, planteur_id, attendance, marked_at, marked_by_agent_id,
         created_at, updated_at, revision
       ) VALUES (?, ?, ?, ?, 'not_marked', NULL, NULL, ?, ?, 1)`,
       [id, accountId, seanceId, planteurId, ts, ts]
     );
-    await enqueueOutboxInTx(accountId, 'participation', id, 'create', payload, 1);
+    await enqueueOutboxInTx(tx, accountId, 'participation', id, 'create', payload, 1);
   });
   return { ok: true };
 }
@@ -369,8 +372,8 @@ export async function setAttendance(
 ) {
   const db = await getDatabase();
   const ts = nowIso();
-  await db.withTransactionAsync(async () => {
-    const row = await db.getFirstAsync<{ revision: number }>(
+  await runTransaction(db, async (tx) => {
+    const row = await tx.getFirstAsync<{ revision: number }>(
       `SELECT revision FROM participations WHERE id = ? AND account_id = ?`,
       [participationId, accountId]
     );
@@ -378,12 +381,13 @@ export async function setAttendance(
     const revision = row.revision + 1;
     const markedAt = attendance === 'not_marked' ? null : ts;
     const markedBy = attendance === 'not_marked' ? null : agentId;
-    await db.runAsync(
+    await tx.runAsync(
       `UPDATE participations SET attendance = ?, marked_at = ?, marked_by_agent_id = ?,
        updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
       [attendance, markedAt, markedBy, ts, revision, participationId, accountId]
     );
     await enqueueOutboxInTx(
+      tx,
       accountId,
       'participation',
       participationId,

@@ -56,6 +56,22 @@ export const secureStorageAdapter = {
   removeItem: removeSecureItem,
 };
 
+const DB_KEY = 'scpb_sqlcipher_key_v1';
+const DB_KEY_OPTIONS: SecureStore.SecureStoreOptions = {
+  // Background sync may open the database while the screen is locked.
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+};
+
+/**
+ * SQLCipher key storage. Deliberately bypasses the timeout and memory fallback
+ * above: answering "no key" when the keystore is merely slow would make the app
+ * generate a new key and lose access to the encrypted database.
+ */
+export const databaseKeyStore = {
+  get: (): Promise<string | null> => SecureStore.getItemAsync(DB_KEY, DB_KEY_OPTIONS),
+  set: (value: string): Promise<void> => SecureStore.setItemAsync(DB_KEY, value, DB_KEY_OPTIONS),
+};
+
 export const saveStoredSession = async (session: StoredSession): Promise<void> => {
   await setSecureItem(SESSION_KEY, JSON.stringify(session));
 };

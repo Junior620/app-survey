@@ -1,5 +1,5 @@
 import type { OutboxEntityType, OutboxOperation, SyncOutboxItem } from '@appsurvey/shared';
-import { getDatabase, newId, nowIso } from '../db';
+import { getDatabase, newId, nowIso, type DbTx } from '../db';
 import { notifyOutboxChanged } from '../syncSignal';
 
 export function buildIdempotencyKey(
@@ -11,8 +11,9 @@ export function buildIdempotencyKey(
   return `${entityType}:${entityId}:${revision}:${operation}`;
 }
 
-/** Enqueue outbox row — must be called inside an existing transaction when paired with a mutation. */
+/** Enqueue outbox row on the caller's transaction handle, alongside the mutation it pairs with. */
 export async function enqueueOutboxInTx(
+  tx: DbTx,
   accountId: string,
   entityType: OutboxEntityType,
   entityId: string,
@@ -22,20 +23,19 @@ export async function enqueueOutboxInTx(
   dependsOn: string | null = null,
   idempotencyKey?: string | null
 ): Promise<string> {
-  const db = await getDatabase();
   const id = newId();
   const ts = nowIso();
   const key =
     idempotencyKey ?? buildIdempotencyKey(entityType, entityId, revision, operation);
 
   // Idempotent: skip if key already exists
-  const existing = await db.getFirstAsync<{ id: string }>(
+  const existing = await tx.getFirstAsync<{ id: string }>(
     `SELECT id FROM sync_outbox WHERE idempotency_key = ?`,
     [key]
   );
   if (existing) return existing.id;
 
-  await db.runAsync(
+  await tx.runAsync(
     `INSERT INTO sync_outbox (
       id, account_id, entity_type, entity_id, operation, payload_json, depends_on,
       transfer_status, revision, idempotency_key, last_error, created_at, updated_at, attempt_count

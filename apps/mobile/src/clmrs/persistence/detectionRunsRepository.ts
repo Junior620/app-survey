@@ -1,5 +1,5 @@
 import type { DetectionResult, HouseholdEvaluation, TriggeredRule } from '@appsurvey/clmrs-engine';
-import { getDatabase, newId, nowIso } from '../../data/db';
+import { getDatabase, newId, nowIso, type DbTx } from '../../data/db';
 
 export type DetectionRunRecord = {
   id: string;
@@ -17,7 +17,7 @@ export type DetectionRunRecord = {
 };
 
 /** Idempotent insert: UNIQUE(survey_response_id, enfant_id, rule_pack_id, input_hash). */
-export async function saveDetectionRunInTx(input: {
+export async function saveDetectionRunInTx(tx: DbTx, input: {
   accountId: string;
   surveyResponseId: string;
   enfantId: string;
@@ -29,8 +29,7 @@ export async function saveDetectionRunInTx(input: {
   result: DetectionResult;
   supersedesRunId?: string | null;
 }): Promise<{ runId: string; inserted: boolean }> {
-  const db = await getDatabase();
-  const existing = await db.getFirstAsync<{ id: string }>(
+  const existing = await tx.getFirstAsync<{ id: string }>(
     `SELECT id FROM detection_runs
      WHERE survey_response_id = ? AND enfant_id = ? AND rule_pack_id = ? AND input_hash = ?`,
     [input.surveyResponseId, input.enfantId, input.rulePackId, input.inputHash]
@@ -41,7 +40,7 @@ export async function saveDetectionRunInTx(input: {
 
   const id = newId();
   const ts = nowIso();
-  await db.runAsync(
+  await tx.runAsync(
     `INSERT INTO detection_runs (
       id, account_id, survey_response_id, enfant_id, household_id, rule_pack_id,
       engine_version, input_hash, evaluation_status, result_json, supersedes_run_id, created_at
@@ -65,14 +64,14 @@ export async function saveDetectionRunInTx(input: {
 }
 
 export async function saveSignalsInTx(
+  tx: DbTx,
   accountId: string,
   runId: string,
   rules: TriggeredRule[]
 ): Promise<void> {
-  const db = await getDatabase();
   const ts = nowIso();
   for (const r of rules) {
-    await db.runAsync(
+    await tx.runAsync(
       `INSERT INTO detection_signals (
         id, run_id, account_id, rule_code, message_key, parameters_json,
         severity, detection_status, created_at
