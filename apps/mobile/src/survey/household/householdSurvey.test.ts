@@ -10,6 +10,8 @@ import {
 } from './householdSurvey';
 import { collectHouseholdSignals } from './householdSignals';
 import { alignEducationRoster, selectHouseholdSource } from './householdLink';
+import { PLANTER_ROW_ID, seedPlanterRespondent } from './planterRespondent';
+import { DISTANCE_RANGE_CODES } from '../distanceRanges';
 import {
   applyAnswer,
   collectBlockingMessages,
@@ -354,5 +356,36 @@ describe('enquête ménage et travail des enfants', () => {
     ]);
     assert.equal(kept.tree.meta?.linkedResponses?.household?.responseId, 'hh-old');
     assert.equal(rosterRows(kept.tree, root, 'hh_roster').some((row) => row.rowId === 'm-9'), false);
+  });
+});
+
+describe('planteur répondant et distances en plages', () => {
+  it('le planteur est en tête de liste et répondant', () => {
+    const seeded = seedPlanterRespondent(emptyResponseTree(), '  Awa Ndiaye ');
+    const rows = rosterRows(seeded, root, 'hh_roster');
+    assert.equal(rows[0]?.rowId, PLANTER_ROW_ID);
+    assert.equal(rows[0]?.sourceValue, 'Awa Ndiaye');
+    assert.equal(seeded.answers.respondent?.value, PLANTER_ROW_ID);
+    const respondent = findQuestion(household, 'respondent')!;
+    const ok = collectUserFacing(household, seeded, root, respondent, 'validationRules', 'fr');
+    assert.equal(ok.length, 0);
+    let other = addRosterRow(seeded, 'hh_roster', 'm-2', 'Koffi');
+    other = applyAnswer(household, other, root, 'respondent', 'm-2');
+    const errors = collectUserFacing(household, other, root, respondent, 'validationRules', 'fr');
+    assert.ok(errors.some((message) => message.includes('planteur')));
+  });
+
+  it('un brouillon déjà rempli n’est pas modifié', () => {
+    const draft = addRosterRow(emptyResponseTree(), 'hh_roster', 'm-1', 'Awa');
+    assert.equal(seedPlanterRespondent(draft, 'Koffi'), draft);
+  });
+
+  it('les distances du ménage sont des plages', () => {
+    for (const key of ['tarrroad_km', 'inpmarket_km', 'primschool_km', 'secschool_km', 'market_km']) {
+      const question = findQuestion(household, key)!;
+      assert.equal(question.type, 'single_choice', key);
+      assert.deepEqual(question.options.map((option) => option.stableKey), DISTANCE_RANGE_CODES, key);
+    }
+    assert.equal(household.versionNumber, 2);
   });
 });

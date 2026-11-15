@@ -8,10 +8,13 @@ import { CONSENT_POLICY } from '../../../survey/consentPolicy';
 export function ConsentReviewStep({
   respondentName,
   onStart,
+  startLabel,
   busy,
 }: {
   respondentName: string;
   onStart: () => void;
+  /** Defaults to "start the survey". */
+  startLabel?: string;
   busy?: boolean;
 }) {
   const { t } = useTranslation();
@@ -28,7 +31,7 @@ export function ConsentReviewStep({
           definition: CONSENT_POLICY.consentDefinitionId,
         })}
       </Text>
-      <PrimaryButton title={t('consent.startSurvey')} onPress={onStart} disabled={busy} loading={busy} />
+      <PrimaryButton title={startLabel ?? t('consent.startSurvey')} onPress={onStart} disabled={busy} loading={busy} />
     </View>
   );
 }

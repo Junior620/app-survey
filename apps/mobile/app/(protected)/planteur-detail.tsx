@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
   AppScreen,
@@ -31,11 +31,14 @@ import {
   type PlanteurDetail,
 } from '../../src/data';
 import { Routes, useSmartBack, useSmartNavigation } from '../../src/navigation';
+import { consentResumeStep } from '../../src/data/repositories/surveyConsentsRepository';
+import type { ConsentStep } from '../../src/survey/consentPolicy';
 import { haptics } from '../../src/utils/haptics';
 
 export default function PlanteurDetailScreen() {
   const { t } = useTranslation();
   const nav = useSmartNavigation();
+  const router = useRouter();
   const { goBack } = useSmartBack();
   const { planteurId } = useLocalSearchParams<{ planteurId: string }>();
   const { user, profile } = useAuthStore();
@@ -45,6 +48,7 @@ export default function PlanteurDetailScreen() {
   const [planteur, setPlanteur] = useState<PlanteurDetail | null>(null);
   const [parcelles, setParcelles] = useState<ParcelleListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [consentStep, setConsentStep] = useState<ConsentStep | null>(null);
 
   const load = useCallback(async () => {
     if (!planteurId) return;
@@ -52,6 +56,7 @@ export default function PlanteurDetailScreen() {
     try {
       setPlanteur(await getPlanteurById(accountId, planteurId));
       setParcelles(await listParcellesForPlanteur(accountId, planteurId));
+      setConsentStep((await consentResumeStep(accountId, planteurId)).step);
     } finally {
       setLoading(false);
     }
@@ -149,6 +154,41 @@ export default function PlanteurDetailScreen() {
                     })}
               </Text>
             </View>
+
+            {consentStep ? (
+              <Pressable
+                style={styles.hubRow}
+                accessibilityRole="button"
+                accessibilityLabel={t('producerHub.consentA11y')}
+                onPress={() => {
+                  haptics.selection();
+                  router.push({
+                    pathname: Routes.surveyConsent,
+                    params: { planteurId: planteur.id, siteId: planteur.siteId },
+                  } as never);
+                }}
+              >
+                <SemanticIcon
+                  name={consentStep === 'ready' ? 'success' : consentStep === 'declined' ? 'cancel' : 'warning'}
+                  size={22}
+                  color={
+                    consentStep === 'ready'
+                      ? colors.succes
+                      : consentStep === 'declined'
+                        ? colors.erreur
+                        : colors.attentionFonce
+                  }
+                />
+                <Text style={styles.hubTitle}>
+                  {consentStep === 'ready'
+                    ? t('producerHub.consentDone')
+                    : consentStep === 'declined'
+                      ? t('producerHub.declined')
+                      : t('producerHub.consentTodo')}
+                </Text>
+                <SemanticIcon name="next" size={18} color={colors.texteSecondaire} />
+              </Pressable>
+            ) : null}
 
             <Pressable
               style={styles.hubRow}

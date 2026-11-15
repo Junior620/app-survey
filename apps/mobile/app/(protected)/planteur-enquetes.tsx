@@ -6,7 +6,11 @@ import { AppScreen, AppHeader, PrimaryButton, SemanticIcon } from '../../src/com
 import { colors, radius, spacing, typography } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { getPlanteurById } from '../../src/data';
-import { listConsentRows, type ConsentListRow } from '../../src/data/repositories/surveyConsentsRepository';
+import {
+  consentRowFor,
+  listConsentRows,
+  type ConsentListRow,
+} from '../../src/data/repositories/surveyConsentsRepository';
 import { consentListPhase } from '../../src/survey/consentPolicy';
 import { useSmartBack, useSmartNavigation } from '../../src/navigation';
 import { SURVEY_HUBS, hubDef, type SurveyHubId } from '../../src/survey/surveyHubCategories';
@@ -108,7 +112,7 @@ export default function PlanteurEnquetesScreen() {
             const only = group.length === 1 ? group[0] : null;
             const phase = only
               ? consentListPhase(
-                  consents.find((c) => c.questionnaireId === only.questionnaireId)?.snapshot ?? null,
+                  consentRowFor(consents, only.questionnaireId)?.snapshot ?? null,
                   only.status
                 )
               : null;

@@ -23,6 +23,7 @@ import {
   type ResponseTree,
 } from '../responseTree';
 import { projectAnswerSource, specialAnswer } from '../specialValues';
+import { DISTANCE_RANGE_CODES } from '../distanceRanges';
 
 const definition = buildAnnualExploitationSnapshot();
 const root: AnswerPath = { level: 'root' };
@@ -81,8 +82,13 @@ describe('commercialisation du cacao', () => {
     assert.equal(coop?.validation.maxSelections, 3);
     assert.equal(coop?.options.some((option) => option.isExclusive), false);
     const km = findQuestion(definition, 'coop_km');
-    assert.equal(km?.specialValues?.some((item) => String(item.code) === '0777' && item.label === 'Dans le village'), true);
-    assert.equal(km?.specialValues?.some((item) => String(item.label).includes('Ne sais pas')), true);
+    assert.equal(km?.type, 'single_choice');
+    assert.equal(km?.options.some((option) => option.stableKey === '0777' && option.label === 'Dans le village'), true);
+    assert.equal(km?.options.some((option) => option.stableKey === '9888' && option.label === 'Ne sais pas'), true);
+    assert.deepEqual(
+      findQuestion(definition, 'buyer_trans_km')?.options.map((option) => option.stableKey),
+      DISTANCE_RANGE_CODES
+    );
   });
 
   it('1-3 et 39-40 la section cacao est tri-state', () => {
@@ -167,21 +173,18 @@ describe('commercialisation du cacao', () => {
       assert.equal(shown('buyertrans_cost', tree), false, code);
     }
     tree = applyAnswer(definition, tree, root, 'buyer_trans', '003');
-    tree = applyAnswer(definition, tree, root, 'buyer_trans_km', specialAnswer(9888));
-    assert.ok(messages('buyer_trans_km', tree, 'warningRules').some((message) => message.includes('approximation')));
+    tree = applyAnswer(definition, tree, root, 'buyer_trans_km', '0003');
+    assert.equal(messages('buyer_trans_km', tree, 'validationRules').length, 0);
     tree = applyAnswer(definition, tree, root, 'coop_mem', '00');
     assert.equal(shown('coop_km', tree), false);
     assert.equal(shown('coop_ben', tree), false);
     tree = applyAnswer(definition, tree, root, 'coop_mem', '01');
     assert.equal(shown('coop_km', tree), true);
     assert.equal(shown('coop_ben', tree), true);
-    tree = applyAnswer(definition, tree, root, 'coop_km', specialAnswer('0777'));
-    assert.equal(messages('coop_km', tree, 'warningRules').some((message) => message.includes('Hors gamme')), false);
+    tree = applyAnswer(definition, tree, root, 'coop_km', '0777');
     assert.equal(projectAnswerSource(tree.answers.coop_km?.value ?? null), '0777');
-    tree = applyAnswer(definition, tree, root, 'coop_km', specialAnswer(9888));
-    assert.equal(findQuestion(definition, 'coop_km')?.specialValues?.find((item) => String(item.code) === '9888')?.label, 'Ne sais pas');
-    tree = applyAnswer(definition, tree, root, 'coop_km', 200);
-    assert.ok(messages('coop_km', tree, 'warningRules').some((message) => message.includes('Hors gamme')));
+    tree = applyAnswer(definition, tree, root, 'coop_km', '0005');
+    assert.equal(messages('coop_km', tree, 'warningRules').length, 0);
   });
 
   it('34-40 projection, versions et anciens 9888', () => {
@@ -202,8 +205,6 @@ describe('commercialisation du cacao', () => {
     assert.equal(messages('buyer_yrs', tree, 'validationRules').some((message) => message.includes('100 ans')), false);
     tree = applyAnswer(definition, tree, root, 'buyer_yrs', specialAnswer('9888'));
     assert.equal(messages('buyer_yrs', tree, 'validationRules').some((message) => message.includes('100 ans')), false);
-    tree = applyAnswer(definition, tree, root, 'coop_km', 777);
-    assert.ok(messages('coop_km', tree, 'warningRules').some((message) => message.includes('Hors gamme')));
     const v2Body = '{"version":2,"frozen":true}';
     const rows = planAnnualVersionRows(
       [

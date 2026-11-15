@@ -52,8 +52,8 @@ function withTypes(codes: string[]): ResponseTree {
 
 describe('autres activités agricoles — chasse', () => {
   it('1-6 exactement quatre questions, dépendances absentes, aucune ligne', () => {
-    assert.equal(ANNUAL_EXPLOITATION_VERSION, 5);
-    assert.equal(definition.versionNumber, 5);
+    assert.equal(ANNUAL_EXPLOITATION_VERSION, 6);
+    assert.equal(definition.versionNumber, 6);
     assert.equal(HUNTING_QUESTION_KEYS.length, 4);
     const previous = JSON.parse(v4Raw) as { versionNumber: number; sections: typeof definition.sections };
     assert.equal(previous.versionNumber, 4);
@@ -153,17 +153,17 @@ describe('autres activités agricoles — chasse', () => {
     assert.equal(agent.includes('MISSING_DEFINITION'), false);
   });
 
-  it('24-25 la fixture V4 reste la version 4 après publication de la V5', () => {
+  it('24-25 la fixture V4 reste la version 4 après publication de la version courante', () => {
     const rows = planAnnualVersionRows(
       [{ versionNumber: 4, state: 'published', definitionJson: v4Raw }],
-      '{"version":5}'
+      '{"version":6}'
     );
     const v4 = rows.find((item) => item.versionNumber === 4)!;
     const current = rows.find((item) => item.versionNumber === ANNUAL_EXPLOITATION_VERSION)!;
     assert.equal(v4.state, 'superseded');
     assert.equal(v4.definitionJson, v4Raw);
     assert.equal(current.state, 'published');
-    assert.equal(current.versionNumber, 5);
+    assert.equal(current.versionNumber, 6);
     const loaded = snapshotForResponse(
       rows.map((item) => ({ versionNumber: item.versionNumber, state: item.state, body: item.definitionJson })),
       4

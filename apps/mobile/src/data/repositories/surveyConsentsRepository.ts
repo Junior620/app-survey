@@ -3,8 +3,11 @@ import { enqueueOutboxInTx } from './outboxRepository';
 import {
   canStartSurvey,
   CONSENT_POLICY,
+  PLANTER_CONSENT_SCOPE,
   EMPTY_CONSENT,
   resolveConsentStep,
+  consentRowFor,
+  type ConsentRowSummary,
   type ConsentSnapshot,
   type ConsentStep,
 } from '../../survey/consentPolicy';
@@ -15,6 +18,7 @@ import {
 } from '../../survey/phoneConsent';
 
 export type SurveyConsentStatus = 'in_progress' | 'accepted' | 'declined';
+
 
 export type SurveyConsentRecord = {
   id: string;
@@ -41,12 +45,8 @@ export type SurveyConsentRecord = {
   revision: number;
 };
 
-export type ConsentListRow = {
-  questionnaireId: string;
-  status: SurveyConsentStatus;
-  snapshot: ConsentSnapshot;
-  ready: boolean;
-};
+export type ConsentListRow = ConsentRowSummary;
+export { consentRowFor, PLANTER_CONSENT_SCOPE };
 
 type ConsentRow = {
   id: string;
@@ -217,24 +217,42 @@ export async function consentArtifactFlags(
   };
 }
 
-export async function consentResumeStep(
+async function resumeFrom(
   accountId: string,
-  planteurId: string,
-  questionnaireId: string
-): Promise<{ step: ConsentStep; record: SurveyConsentRecord | null; snapshot: ConsentSnapshot }> {
-  const record = await getConsentForQuestionnaire(accountId, planteurId, questionnaireId);
-  if (!record) {
-    return { step: resolveConsentStep(EMPTY_CONSENT), record: null, snapshot: EMPTY_CONSENT };
-  }
+  record: SurveyConsentRecord
+): Promise<{ step: ConsentStep; record: SurveyConsentRecord; snapshot: ConsentSnapshot }> {
   const artifacts = await consentArtifactFlags(accountId, record.id);
   const snapshot = snapshotOf(record, artifacts);
   return { step: resolveConsentStep(snapshot), record, snapshot };
 }
 
+/**
+ * The planter's consent: the planter-level row, else (data from earlier versions) a refusal
+ * for this questionnaire, else any complete per-questionnaire consent of the same planter.
+ */
+export async function consentResumeStep(
+  accountId: string,
+  planteurId: string,
+  questionnaireId?: string | null
+): Promise<{ step: ConsentStep; record: SurveyConsentRecord | null; snapshot: ConsentSnapshot }> {
+  const planter = await getConsentForQuestionnaire(accountId, planteurId, PLANTER_CONSENT_SCOPE);
+  if (planter) return resumeFrom(accountId, planter);
+  if (questionnaireId) {
+    const own = await getConsentForQuestionnaire(accountId, planteurId, questionnaireId);
+    if (own?.status === 'declined') return resumeFrom(accountId, own);
+  }
+  const legacy = (await listConsentRows(accountId, planteurId)).find((row) => row.ready);
+  if (legacy) {
+    const record = await getConsentForQuestionnaire(accountId, planteurId, legacy.questionnaireId);
+    if (record) return resumeFrom(accountId, record);
+  }
+  return { step: resolveConsentStep(EMPTY_CONSENT), record: null, snapshot: EMPTY_CONSENT };
+}
+
 export async function hasValidAcceptedConsent(
   accountId: string,
   planteurId: string,
-  questionnaireId: string
+  questionnaireId?: string | null
 ): Promise<boolean> {
   const { snapshot } = await consentResumeStep(accountId, planteurId, questionnaireId);
   return canStartSurvey(snapshot);
@@ -243,7 +261,6 @@ export async function hasValidAcceptedConsent(
 export type ConsentIdentity = {
   accountId: string;
   planteurId: string;
-  questionnaireId: string;
   versionNumber: string;
   language: string;
   agentId: string;
@@ -272,12 +289,12 @@ function cleanedPhone(
   return normalized;
 }
 
-/** Insert or update the unique consent row. A declined row is never rewritten. */
+/** Insert or update the planter's consent row. A declined row is never rewritten. */
 export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatch): Promise<SurveyConsentRecord> {
   const existing = await getConsentForQuestionnaire(
     identity.accountId,
     identity.planteurId,
-    identity.questionnaireId
+    PLANTER_CONSENT_SCOPE
   );
   if (existing?.status === 'declined') return existing;
   if (
@@ -335,7 +352,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
       id,
       accountId: identity.accountId,
       planteurId: identity.planteurId,
-      questionnaireId: identity.questionnaireId,
+      questionnaireId: PLANTER_CONSENT_SCOPE,
       definitionId: CONSENT_POLICY.consentDefinitionId,
       consentVersion: CONSENT_POLICY.version,
       createdAt: ts,
