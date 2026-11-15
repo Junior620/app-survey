@@ -61,7 +61,8 @@ export function respondentPhoneComplete(
   phone: string | null
 ): boolean {
   if (status === 'no_phone' || status === 'refused') return true;
-  if (status === 'provided') return isValidCameroonMobile(phone);
+  // Provided without a number: recorded by another agent, who keeps the number private.
+  if (status === 'provided') return phone == null || isValidCameroonMobile(phone);
   return false;
 }
 
@@ -70,7 +71,7 @@ export function otherHouseholdPhoneComplete(
   phone: string | null
 ): boolean {
   if (status === 'no_other_phone' || status === 'refused') return true;
-  if (status === 'provided') return isValidCameroonMobile(phone);
+  if (status === 'provided') return phone == null || isValidCameroonMobile(phone);
   return false;
 }
 
@@ -192,4 +193,14 @@ export function consentRowFor<T extends ConsentRowSummary>(rows: T[], questionna
     rows.find((row) => row.questionnaireId === questionnaireId) ??
     null
   );
+}
+
+/** Consent fields that never leave the author's private copy (statuses are shared, numbers are not). */
+const CONSENT_PHONE_NUMBER_KEYS = ['respondentPhone', 'otherHouseholdPhone', 'respondent_phone', 'other_household_phone'];
+
+/** Consent payload shared with the other agents of the planter's site. */
+export function withoutConsentPhones<T extends Record<string, unknown>>(payload: T): Partial<T> {
+  const shared: Record<string, unknown> = { ...payload };
+  for (const key of CONSENT_PHONE_NUMBER_KEYS) delete shared[key];
+  return shared as Partial<T>;
 }

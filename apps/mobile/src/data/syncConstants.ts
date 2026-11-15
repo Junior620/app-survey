@@ -19,6 +19,7 @@ export const MIRROR_TABLE_BY_ENTITY: Record<string, string> = {
   attachment: 'attachments_meta',
   geometry_version: 'geometry_versions_remote',
   campaign: 'campaigns',
+  survey_consent: 'survey_consents_remote',
 };
 
 export const PULL_MIRROR_TABLES = [
@@ -28,6 +29,7 @@ export const PULL_MIRROR_TABLES = [
   'villages',
   'secteurs',
   'planteurs',
+  'survey_consents_remote',
   'parcelles',
   'formations',
   'seances',
