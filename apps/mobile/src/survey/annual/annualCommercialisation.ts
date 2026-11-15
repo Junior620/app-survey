@@ -4,6 +4,7 @@ import type {
   SectionDefinition,
 } from '@appsurvey/shared/src/types/questionnaire';
 import type { Expr } from '@appsurvey/shared/src/types/ruleAst';
+import { DISTANCE_RANGE_PAIRS } from '../distanceRanges';
 
 export const COCOA_QUESTION_KEYS = [
   'cocoa_exp',
@@ -370,11 +371,9 @@ export function cocoaCommercialisationSection(): SectionDefinition {
               ['999', 'Autre'],
             ]),
           }),
-          q(buyer, 'buyer_trans_km', 'integer', 'Quelle est la distance du voyage (en km) ?', 26, {
+          q(buyer, 'buyer_trans_km', 'single_choice', 'Quelle est la distance du voyage ?', 26, {
             enablement: transportPaid,
-            config: { unit: 'km' },
-            specialValues: unknown,
-            warningRules: [{ id: 'W1', assertion: { kind: 'notEquals', field: 'self', value: UNKNOWN }, message: APPROX }],
+            options: opts(DISTANCE_RANGE_PAIRS),
           }),
           q(buyer, 'buyertrans_cost', 'integer', 'Quel est le coût du transport du cacao ?', 27, {
             help: 'Si le producteur a son propre véhicule, estimez le coût de l’essence.',
@@ -398,27 +397,9 @@ export function cocoaCommercialisationSection(): SectionDefinition {
             help: 'Il peut s’agir de tout type de groupe de producteurs ou de coopérative : groupe auto-organisé, organisé par un pisteur/coxeur, groupe organisé pour un système de certification, etc.',
             options: yesNo,
           }),
-          q(coop, 'coop_km', 'decimal', 'À combien de kilomètres se trouve cette coopérative / ce groupe d’agriculteurs de votre ménage ?', 30, {
+          q(coop, 'coop_km', 'single_choice', 'À quelle distance se trouve cette coopérative / ce groupe d’agriculteurs de votre ménage ?', 30, {
             enablement: equals('coop_mem', '01'),
-            config: { unit: 'km' },
-            specialValues: [
-              { code: UNKNOWN, label: 'Ne sais pas' },
-              { code: '0777', label: 'Dans le village' },
-            ],
-            warningRules: [
-              {
-                id: 'W1',
-                assertion: {
-                  kind: 'or',
-                  conditions: [
-                    { kind: 'inRange', field: 'self', min: 0, max: 150 },
-                    { kind: 'equals', field: 'self', value: UNKNOWN },
-                  ],
-                },
-                message: 'ATTENTION : Hors gamme. Vérifiez !',
-              },
-              { id: 'W2', assertion: { kind: 'notEquals', field: 'self', value: UNKNOWN }, message: APPROX },
-            ],
+            options: opts([['0777', 'Dans le village'], ...DISTANCE_RANGE_PAIRS]),
           }),
           q(coop, 'coop_ben', 'multi_choice', 'Quels sont les principaux avantages à être membre de cette coopérative/groupe de producteurs ? (3 max)', 31, {
             enablement: equals('coop_mem', '01'),

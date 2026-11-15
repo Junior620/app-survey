@@ -164,3 +164,32 @@ export function consentListPhase(
   if (responseStatus === 'in_progress') return 'in_progress';
   return 'todo';
 }
+
+/**
+ * Consent is given once per planter, at registration, and covers every questionnaire.
+ * Stored in survey_consents with this questionnaire_id. Rows written per questionnaire
+ * by earlier versions are still honoured.
+ */
+export const PLANTER_CONSENT_SCOPE = 'planteur';
+
+export type ConsentRowSummary = {
+  questionnaireId: string;
+  status: ConsentStatus;
+  snapshot: ConsentSnapshot;
+  ready: boolean;
+};
+
+/**
+ * Consent row that governs one questionnaire: the planter-level row, else an older refusal
+ * of this questionnaire, else any complete older consent of the planter, else this
+ * questionnaire's unfinished row.
+ */
+export function consentRowFor<T extends ConsentRowSummary>(rows: T[], questionnaireId: string): T | null {
+  return (
+    rows.find((row) => row.questionnaireId === PLANTER_CONSENT_SCOPE) ??
+    rows.find((row) => row.questionnaireId === questionnaireId && row.status === 'declined') ??
+    rows.find((row) => row.ready) ??
+    rows.find((row) => row.questionnaireId === questionnaireId) ??
+    null
+  );
+}

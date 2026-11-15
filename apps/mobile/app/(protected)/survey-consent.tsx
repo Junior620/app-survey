@@ -16,6 +16,7 @@ import { ParticipantPhotoStep } from '../../src/components/consent/steps/Partici
 import { SignatureStep } from '../../src/components/consent/steps/SignatureStep';
 import type { SignaturePadHandle } from '../../src/components/consent/SignaturePad';
 import { saveAttachmentFromUri } from '../../src/data/repositories/attachmentsRepository';
+import { getPlanteurById } from '../../src/data/repositories/planteursRepository';
 import {
   consentResumeStep,
   patchConsent,
@@ -47,8 +48,9 @@ export default function SurveyConsentScreen() {
   const router = useRouter();
   const locale = useLocaleStore((s) => s.displayLocale);
   const params = useLocalSearchParams<{
-    questionnaireId: string;
-    versionNumber: string;
+    /** Absent when the consent is taken right after creating the planter. */
+    questionnaireId?: string;
+    versionNumber?: string;
     siteId?: string;
     planteurId?: string;
     responseId?: string;
@@ -57,6 +59,8 @@ export default function SurveyConsentScreen() {
   const accountId = user?.id || profile?.id || 'local-account';
   const agentName = profile?.fullName?.trim() || user?.email || t('consent.agentFallback');
   const language = locale.startsWith('en') ? 'en' : 'fr';
+  /** Consent covers every questionnaire of the planter; without one we came from planter creation. */
+  const planterMode = !params.questionnaireId;
 
   const [step, setStep] = useState<ConsentStep>('intro');
   const [record, setRecord] = useState<SurveyConsentRecord | null>(null);
@@ -91,8 +95,7 @@ export default function SurveyConsentScreen() {
   const identity = (): ConsentIdentity => ({
     accountId,
     planteurId: params.planteurId!,
-    questionnaireId: params.questionnaireId!,
-    versionNumber: String(params.versionNumber || '1'),
+    versionNumber: String(params.versionNumber || '0'),
     language,
     agentId: accountId,
     agentNameSnapshot: agentName,
@@ -140,19 +143,24 @@ export default function SurveyConsentScreen() {
     useCallback(() => {
       let alive = true;
       (async () => {
-        if (!params.planteurId || !params.questionnaireId) {
+        if (!params.planteurId) {
           setLoading(false);
           return;
         }
         setLoading(true);
         try {
-          const found = await consentResumeStep(accountId, params.planteurId, params.questionnaireId);
+          const found = await consentResumeStep(accountId, params.planteurId, params.questionnaireId ?? null);
           if (!alive) return;
           setSnapshot(found.snapshot);
           if (found.record) applyRecord(found.record, {
             hasSignature: found.snapshot.hasSignature,
             hasPhoto: found.snapshot.hasPhoto,
           });
+          if (!found.record?.respondentName) {
+            // The planter is the respondent: start from their registered name.
+            const planter = await getPlanteurById(accountId, params.planteurId);
+            if (alive && planter) setName(`${planter.prenoms} ${planter.nom}`.trim());
+          }
           if (found.step === 'declined') setStep('declined');
           else if (found.step === 'ready') setStep('recap');
           else if (found.record && hasConsentProgress(found.snapshot)) setStep('resume');
@@ -335,7 +343,20 @@ export default function SurveyConsentScreen() {
     }
   };
 
+  const openPlanter = () => {
+    skipDirtyRef.current = true;
+    unsavedRef.current = false;
+    router.replace({
+      pathname: Routes.planteurDetail,
+      params: { planteurId: params.planteurId },
+    } as never);
+  };
+
   const startSurvey = () => {
+    if (planterMode) {
+      openPlanter();
+      return;
+    }
     skipDirtyRef.current = true;
     unsavedRef.current = false;
     router.replace({
@@ -423,9 +444,14 @@ export default function SurveyConsentScreen() {
             />
           ) : null}
           {step === 'recap' ? (
-            <ConsentReviewStep respondentName={name.trim()} onStart={startSurvey} busy={busy} />
+            <ConsentReviewStep
+              respondentName={name.trim()}
+              onStart={startSurvey}
+              startLabel={planterMode ? t('consent.finishPlanter') : undefined}
+              busy={busy}
+            />
           ) : null}
-          {step === 'declined' ? <ConsentDeclinedStep onFinish={goBack} /> : null}
+          {step === 'declined' ? <ConsentDeclinedStep onFinish={planterMode ? openPlanter : goBack} /> : null}
         </KeyboardAwareScrollView>
       )}
     </AppScreen>

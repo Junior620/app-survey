@@ -14,7 +14,11 @@ import {
   type ProducerSurveyItem,
 } from '../../src/survey/loadProducerSurveys';
 import { haptics } from '../../src/utils/haptics';
-import { listConsentRows, type ConsentListRow } from '../../src/data/repositories/surveyConsentsRepository';
+import {
+  consentRowFor,
+  listConsentRows,
+  type ConsentListRow,
+} from '../../src/data/repositories/surveyConsentsRepository';
 import { consentListPhase } from '../../src/survey/consentPolicy';
 
 export default function PlanteurCategorieScreen() {
@@ -66,7 +70,7 @@ export default function PlanteurCategorieScreen() {
   );
 
   const phaseOf = (item: ProducerSurveyItem) => {
-    const row = consents.find((c) => c.questionnaireId === item.questionnaireId);
+    const row = consentRowFor(consents, item.questionnaireId);
     return consentListPhase(row?.snapshot ?? null, item.status);
   };
 
