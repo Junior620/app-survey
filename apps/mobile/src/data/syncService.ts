@@ -201,6 +201,34 @@ function resolveAttachmentContentType(
   return fromExt && allowed.has(fromExt) ? fromExt : 'application/octet-stream';
 }
 
+/** Site of an attachment's parent record, so the server can share it with that site's agents. */
+async function siteForAttachment(entityType: string, entityId: string): Promise<string | null> {
+  if (!entityId) return null;
+  const db = await getDatabase();
+  if (entityType.startsWith('consent_')) {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT p.site_id FROM survey_consents c JOIN planteurs p ON p.id = c.planteur_id WHERE c.id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  if (entityType === 'planteur') {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT site_id FROM planteurs WHERE id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  if (entityType === 'seance' || entityType.startsWith('seance_')) {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT f.site_id FROM seances s JOIN formations f ON f.id = s.formation_id WHERE s.id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  return null;
+}
+
 async function upsertMirror(
   table: string,
   record: Record<string, unknown>
@@ -266,6 +294,10 @@ async function pushOne(
     });
     await upsertMirror('attachments_meta', {
       ...base,
+      site_id: await siteForAttachment(
+        String(payload.entity_type ?? payload.entityType ?? ''),
+        String(payload.entity_id ?? payload.entityId ?? '')
+      ),
       entity_type: payload.entity_type ?? payload.entityType ?? null,
       entity_id: payload.entity_id ?? payload.entityId ?? null,
       storage_path: storagePath,

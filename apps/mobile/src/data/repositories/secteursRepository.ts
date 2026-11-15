@@ -27,9 +27,9 @@ export async function listSecteursForSite(
       (SELECT COUNT(*) FROM secteur_villages sv WHERE sv.secteur_id = s.id) AS village_count,
       (SELECT COUNT(*) FROM planteurs p WHERE p.secteur_id = s.id AND p.status = 'active') AS planteur_count
      FROM secteurs s
-     WHERE s.account_id = ? AND s.site_id = ? AND s.status != 'deleted'
+     WHERE s.site_id = ? AND s.status != 'deleted'
      ORDER BY s.code`,
-    [accountId, siteId]
+    [siteId]
   );
   return rows.map((r) => ({
     id: r.id,
@@ -87,8 +87,8 @@ export async function getSecteurById(
       (SELECT COUNT(*) FROM secteur_villages sv WHERE sv.secteur_id = s.id) AS village_count,
       (SELECT COUNT(*) FROM planteurs p WHERE p.secteur_id = s.id AND p.status = 'active') AS planteur_count
      FROM secteurs s
-     WHERE s.id = ? AND s.account_id = ?`,
-    [secteurId, accountId]
+     WHERE s.id = ?`,
+    [secteurId]
   );
   if (!row) return null;
   return {
@@ -113,8 +113,8 @@ export async function updateSecteur(
   try {
     await runTransaction(db, async (tx) => {
       const row = await tx.getFirstAsync<{ revision: number; status: string }>(
-        `SELECT revision, status FROM secteurs WHERE id = ? AND account_id = ?`,
-        [secteurId, accountId]
+        `SELECT revision, status FROM secteurs WHERE id = ?`,
+        [secteurId]
       );
       if (!row) throw new Error('Secteur introuvable');
       if (row.status === 'archived') {
@@ -125,8 +125,8 @@ export async function updateSecteur(
       const name = input.name.trim();
       await tx.runAsync(
         `UPDATE secteurs SET code = ?, name = ?, updated_at = ?, revision = ?
-         WHERE id = ? AND account_id = ?`,
-        [code, name, ts, revision, secteurId, accountId]
+         WHERE id = ?`,
+        [code, name, ts, revision, secteurId]
       );
       payload = { id: secteurId, code, name, revision };
       await enqueueOutboxInTx(tx, accountId, 'secteur', secteurId, 'update', payload, revision);
@@ -153,14 +153,14 @@ export async function archiveSecteur(accountId: string, secteurId: string) {
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number }>(
-      `SELECT revision FROM secteurs WHERE id = ? AND account_id = ?`,
-      [secteurId, accountId]
+      `SELECT revision FROM secteurs WHERE id = ?`,
+      [secteurId]
     );
     if (!row) throw new Error('Secteur introuvable');
     const revision = row.revision + 1;
     await tx.runAsync(
-      `UPDATE secteurs SET status = 'archived', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
-      [ts, revision, secteurId, accountId]
+      `UPDATE secteurs SET status = 'archived', updated_at = ?, revision = ? WHERE id = ?`,
+      [ts, revision, secteurId]
     );
     await enqueueOutboxInTx(
       tx,

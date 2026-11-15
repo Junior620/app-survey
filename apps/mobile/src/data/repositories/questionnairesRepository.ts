@@ -456,8 +456,8 @@ export async function getPublishedDefinition(
   const db = await getDatabase();
   const version = await db.getFirstAsync<{ id: string; definition_json: string | null }>(
     `SELECT id, definition_json FROM questionnaire_versions
-     WHERE questionnaire_id = ? AND account_id = ? AND version_number = ? AND state IN ('published','superseded')`,
-    [questionnaireId, accountId, versionNumber]
+     WHERE questionnaire_id = ? AND version_number = ? AND state IN ('published','superseded')`,
+    [questionnaireId, versionNumber]
   );
   if (!version?.definition_json) return null;
   return parseJson(version.definition_json, null);

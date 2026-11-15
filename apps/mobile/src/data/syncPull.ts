@@ -18,6 +18,7 @@ const PULL_APPLIED_TABLES = new Set<PullMirrorTable>([
   'sites',
   'secteurs',
   'planteurs',
+  'parcelles',
   'formations',
   'missions',
   'survey_responses_remote',
@@ -416,6 +417,58 @@ async function applyRemoteRow(
           Number(row.current_step ?? 1),
           bind(row.campaign_id),
           JSON.stringify(payload),
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'parcelles': {
+      const planteurId = String(row.planteur_id ?? payload.planteurId ?? payload.planteur_id ?? '');
+      const siteId = String(row.site_id ?? payload.siteId ?? payload.site_id ?? '');
+      const code = payload.code == null ? null : String(payload.code);
+      const name = payload.name == null ? null : String(payload.name);
+      const area = payload.superficieDeclareeHa ?? payload.superficie_declaree_ha;
+      const year = payload.anneePlantation ?? payload.annee_plantation;
+      const mapping = payload.mappingStatus ?? payload.mapping_status;
+      if (await rowExists('parcelles', id)) {
+        // Archive payloads carry only id + status: keep the other fields.
+        await db.runAsync(
+          `UPDATE parcelles SET
+            code = COALESCE(?, code), name = COALESCE(?, name),
+            superficie_declaree_ha = COALESCE(?, superficie_declaree_ha),
+            annee_plantation = COALESCE(?, annee_plantation),
+            mapping_status = COALESCE(?, mapping_status),
+            status = ?, updated_at = ?, revision = ?
+           WHERE id = ?`,
+          [code, name, bind(area), bind(year), bind(mapping), status, ts, remoteRev, id]
+        );
+        return 'applied';
+      }
+      if (!planteurId || !(await rowExists('planteurs', planteurId))) {
+        throw new Error(`parcelle ${id}: planteur inconnu localement (${planteurId || '∅'})`);
+      }
+      if (!siteId || !(await rowExists('sites', siteId))) {
+        throw new Error(`parcelle ${id}: site inconnu localement (${siteId || '∅'})`);
+      }
+      if (!code || !name) throw new Error(`parcelle ${id}: code ou nom manquant`);
+      await db.runAsync(
+        `INSERT INTO parcelles (
+          id, account_id, planteur_id, site_id, code, name, annee_plantation,
+          superficie_declaree_ha, mapping_status, status, created_at, updated_at, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          ownerAccount,
+          planteurId,
+          siteId,
+          code,
+          name,
+          bind(year),
+          bind(area),
+          String(mapping ?? 'not_started'),
+          status,
           created,
           ts,
           remoteRev,

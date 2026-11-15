@@ -145,8 +145,8 @@ export async function getConsentForQuestionnaire(
   const db = await getDatabase();
   const row = await db.getFirstAsync<ConsentRow>(
     `SELECT ${SELECT_COLS} FROM survey_consents
-     WHERE account_id = ? AND planteur_id = ? AND questionnaire_id = ? AND consent_version = ?`,
-    [accountId, planteurId, questionnaireId, consentVersion]
+     WHERE planteur_id = ? AND questionnaire_id = ? AND consent_version = ?`,
+    [planteurId, questionnaireId, consentVersion]
   );
   return row ? mapRow(row) : null;
 }
@@ -168,17 +168,17 @@ export async function listConsentRows(
   const db = await getDatabase();
   const rows = await db.getAllAsync<ConsentRow>(
     `SELECT ${SELECT_COLS} FROM survey_consents
-     WHERE account_id = ? AND planteur_id = ? AND consent_version = ?`,
-    [accountId, planteurId, consentVersion]
+     WHERE planteur_id = ? AND consent_version = ?`,
+    [planteurId, consentVersion]
   );
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const placeholders = ids.map(() => '?').join(', ');
   const attachments = await db.getAllAsync<{ entity_id: string; entity_type: string }>(
     `SELECT entity_id, entity_type FROM attachments
-     WHERE account_id = ? AND entity_type IN ('consent_signature', 'consent_photo')
+     WHERE entity_type IN ('consent_signature', 'consent_photo')
        AND entity_id IN (${placeholders})`,
-    [accountId, ...ids]
+    [...ids]
   );
   const byId = new Map<string, { hasSignature: boolean; hasPhoto: boolean }>();
   for (const row of rows) byId.set(row.id, { hasSignature: false, hasPhoto: false });
@@ -207,8 +207,8 @@ export async function consentArtifactFlags(
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ entity_type: string }>(
     `SELECT entity_type FROM attachments
-     WHERE account_id = ? AND entity_id = ? AND entity_type IN ('consent_signature', 'consent_photo')`,
-    [accountId, consentId]
+     WHERE entity_id = ? AND entity_type IN ('consent_signature', 'consent_photo')`,
+    [consentId]
   );
   const types = new Set(rows.map((r) => r.entity_type));
   return {
@@ -414,7 +414,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
         respondent_name = ?, respondent_phone_status = ?, respondent_phone = ?,
         other_household_phone_status = ?, other_household_phone = ?,
         decided_at = ?, updated_at = ?, transfer_status = 'pending', revision = ?
-       WHERE id = ? AND account_id = ?`,
+       WHERE id = ?`,
       [
         next.versionNumber,
         next.language,
@@ -431,7 +431,6 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
         next.updatedAt,
         next.revision,
         next.id,
-        identity.accountId,
       ]
     );
     await enqueueOutboxInTx(tx, identity.accountId, 'survey_consent', next.id, 'update', next, revision);

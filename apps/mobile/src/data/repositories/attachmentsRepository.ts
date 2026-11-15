@@ -136,9 +136,9 @@ export async function listAttachmentsForEntity(
     `SELECT id, entity_type, entity_id, relative_path, mime_type, byte_size, caption,
             access_level, captured_at, added_at, author_id, transfer_status
      FROM attachments
-     WHERE account_id = ? AND entity_type = ? AND entity_id = ?
+     WHERE entity_type = ? AND entity_id = ?
      ORDER BY added_at DESC`,
-    [accountId, entityType, entityId]
+    [entityType, entityId]
   );
 
   const canSensitive = role

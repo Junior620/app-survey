@@ -226,3 +226,34 @@ export async function createUserAccount(input: CreateUserInput): Promise<UserPro
     'Compte Auth créé, profil encore absent. Réessayez dans quelques secondes.'
   );
 }
+
+/** Sites an agent is assigned to (field data is shared between the agents of a site). */
+export async function getUserSiteIds(userId: string): Promise<string[]> {
+  const client = requireClient();
+  const { data, error } = await client.from('profile_sites').select('site_id').eq('profile_id', userId);
+  if (error) throw new Error(error.message || 'Impossible de charger les sites de cet utilisateur.');
+  return ((data ?? []) as Array<{ site_id: string }>).map((row) => row.site_id);
+}
+
+/** Replaces the agent's site list. Requires migration 011. */
+export async function setUserSites(userId: string, cooperativeId: string, siteIds: string[]): Promise<void> {
+  const client = requireClient();
+  const current = await getUserSiteIds(userId);
+  const wanted = new Set(siteIds);
+  const removed = current.filter((siteId) => !wanted.has(siteId));
+  const added = siteIds.filter((siteId) => !current.includes(siteId));
+  if (removed.length > 0) {
+    const { error } = await client
+      .from('profile_sites')
+      .delete()
+      .eq('profile_id', userId)
+      .in('site_id', removed);
+    if (error) throw new Error(error.message || 'Retrait des sites impossible.');
+  }
+  if (added.length > 0) {
+    const { error } = await client
+      .from('profile_sites')
+      .insert(added.map((siteId) => ({ profile_id: userId, site_id: siteId, cooperative_id: cooperativeId })));
+    if (error) throw new Error(error.message || 'Affectation des sites impossible.');
+  }
+}

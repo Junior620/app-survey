@@ -510,7 +510,7 @@ export default function SurveyRunScreen() {
                       router.push({
                         pathname: Routes.surveyRun,
                         params: {
-                          questionnaireId: `${HOUSEHOLD_QUESTIONNAIRE_ID}:${accountId}`,
+                          questionnaireId: HOUSEHOLD_QUESTIONNAIRE_ID,
                           versionNumber: String(householdResponse?.version ?? HOUSEHOLD_VERSION),
                           ...(params.siteId ? { siteId: params.siteId } : {}),
                           ...(params.planteurId ? { planteurId: params.planteurId } : {}),
