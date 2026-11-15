@@ -8,12 +8,16 @@ import {
 } from './householdSurvey';
 import type { QuestionnaireDefinitionSnapshot } from '@appsurvey/shared/src/types/questionnaire';
 
-export function householdQuestionnaireId(accountId: string): string {
-  return `${HOUSEHOLD_QUESTIONNAIRE_ID}:${accountId}`;
+/**
+ * Same id on every phone, so the agents of a site share responses to these questionnaires.
+ * (Before, ids carried the agent's account; local migration v10 rewrites them.)
+ */
+export function householdQuestionnaireId(_accountId?: string): string {
+  return HOUSEHOLD_QUESTIONNAIRE_ID;
 }
 
-export function educationQuestionnaireId(accountId: string): string {
-  return `${EDUCATION_QUESTIONNAIRE_ID}:${accountId}`;
+export function educationQuestionnaireId(_accountId?: string): string {
+  return EDUCATION_QUESTIONNAIRE_ID;
 }
 
 async function publishIfMissing(
@@ -26,13 +30,13 @@ async function publishIfMissing(
   snapshot: QuestionnaireDefinitionSnapshot
 ): Promise<void> {
   const db = await getDatabase();
-  const questionnaireId = `${stableId}:${accountId}`;
+  const questionnaireId = stableId;
   const versionId = `${questionnaireId}:v${version}`;
   const ts = nowIso();
   const existing = await db.getFirstAsync<{ id: string }>(
     `SELECT id FROM questionnaire_versions
-     WHERE questionnaire_id = ? AND account_id = ? AND version_number = ?`,
-    [questionnaireId, accountId, version]
+     WHERE questionnaire_id = ? AND version_number = ?`,
+    [questionnaireId, version]
   );
   const questionnaire = await db.getFirstAsync<{ id: string; published_version: number | null }>(
     `SELECT id, published_version FROM questionnaires WHERE id = ?`,
@@ -65,8 +69,8 @@ async function publishIfMissing(
   await db.runAsync(
     `UPDATE questionnaire_assignments
      SET version_number = ?, updated_at = ?
-     WHERE questionnaire_id = ? AND account_id = ? AND status = 'active' AND version_number < ?`,
-    [version, ts, questionnaireId, accountId, version]
+     WHERE questionnaire_id = ? AND status = 'active' AND version_number < ?`,
+    [version, ts, questionnaireId, version]
   );
   const sites = await db.getAllAsync<{ id: string }>(
     `SELECT id FROM sites WHERE status = 'active' OR id = ?`,

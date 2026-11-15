@@ -8,6 +8,7 @@ import {
   clearStoredSession,
 } from '../services/secureStore';
 import { isSupabaseConfigured } from '../services/supabaseConfig';
+import { prepareDeviceForAccount } from '../data/accountSwitch';
 
 /** How long a field agent may keep working offline after the last online sign-in. */
 const OFFLINE_GRACE_MS = 7 * 24 * 3600 * 1000;
@@ -141,6 +142,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isOffline: !isOnline });
 
       const { user, profile, session } = await AuthService.login(credentials, !isOnline);
+      await prepareDeviceForAccount(user.id);
 
       const userRole = profile.role || (user.role as UserRole) || 'AGENT_TERRAIN';
 

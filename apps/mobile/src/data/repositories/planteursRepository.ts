@@ -129,7 +129,7 @@ export async function findPlanteurDuplicates(
         ELSE 'other'
       END AS match
      FROM planteurs
-     WHERE account_id = ? AND status = 'active'
+     WHERE status = 'active'
        AND (? IS NULL OR id != ?)
        AND (
          lower(code) = lower(?)
@@ -142,7 +142,6 @@ export async function findPlanteurDuplicates(
       input.telephone ?? null,
       input.nom,
       input.prenoms,
-      accountId,
       excludeId ?? null,
       excludeId ?? null,
       input.code,
@@ -164,21 +163,21 @@ export async function listPlanteursForSite(
   const rows = siteId
     ? await db.getAllAsync<PlanteurDbRow>(
         `SELECT * FROM planteurs
-         WHERE account_id = ? AND site_id = ? AND status = 'active'
+         WHERE site_id = ? AND status = 'active'
            AND (? IS NULL OR lower(code) LIKE '%' || ? || '%'
              OR lower(nom) LIKE '%' || ? || '%'
              OR lower(prenoms) LIKE '%' || ? || '%')
          ORDER BY nom, prenoms`,
-        [accountId, siteId, q, q, q, q]
+        [siteId, q, q, q, q]
       )
     : await db.getAllAsync<PlanteurDbRow>(
         `SELECT * FROM planteurs
-         WHERE account_id = ? AND status = 'active'
+         WHERE status = 'active'
            AND (? IS NULL OR lower(code) LIKE '%' || ? || '%'
              OR lower(nom) LIKE '%' || ? || '%'
              OR lower(prenoms) LIKE '%' || ? || '%')
          ORDER BY nom, prenoms`,
-        [accountId, q, q, q, q]
+        [q, q, q, q]
       );
   return rows.map((r) => ({
     id: r.id,
@@ -198,8 +197,8 @@ export async function getPlanteurById(
 ): Promise<PlanteurDetail | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<PlanteurDbRow>(
-    `SELECT * FROM planteurs WHERE id = ? AND account_id = ?`,
-    [planteurId, accountId]
+    `SELECT * FROM planteurs WHERE id = ?`,
+    [planteurId]
   );
   return row ? mapPlanteur(row) : null;
 }
@@ -275,8 +274,8 @@ export async function updatePlanteur(
   try {
     await runTransaction(db, async (tx) => {
       const row = await tx.getFirstAsync<PlanteurDbRow>(
-        `SELECT * FROM planteurs WHERE id = ? AND account_id = ?`,
-        [planteurId, accountId]
+        `SELECT * FROM planteurs WHERE id = ?`,
+        [planteurId]
       );
       if (!row) throw new Error('Planteur introuvable');
       if (row.status === 'archived') {
@@ -288,7 +287,7 @@ export async function updatePlanteur(
       await tx.runAsync(
         `UPDATE planteurs SET code = ?, nom = ?, prenoms = ?, telephone = ?, secteur_id = ?,
          id_document_availability = ?, updated_at = ?, revision = ?
-         WHERE id = ? AND account_id = ?`,
+         WHERE id = ?`,
         [
           input.code.trim(),
           input.nom.trim(),
@@ -299,7 +298,6 @@ export async function updatePlanteur(
           ts,
           revision,
           planteurId,
-          accountId,
         ]
       );
 
@@ -343,8 +341,8 @@ export async function getPlanteurDependencies(accountId: string, planteurId: str
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ parcelles: number }>(
     `SELECT COUNT(*) AS parcelles FROM parcelles
-     WHERE planteur_id = ? AND account_id = ? AND status = 'active'`,
-    [planteurId, accountId]
+     WHERE planteur_id = ? AND status = 'active'`,
+    [planteurId]
   );
   return { parcelles: row?.parcelles ?? 0 };
 }
@@ -355,8 +353,8 @@ export async function archivePlanteur(accountId: string, planteurId: string): Pr
 
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<PlanteurDbRow>(
-      `SELECT * FROM planteurs WHERE id = ? AND account_id = ?`,
-      [planteurId, accountId]
+      `SELECT * FROM planteurs WHERE id = ?`,
+      [planteurId]
     );
     if (!row) throw new Error('Planteur introuvable');
     if (row.status === 'archived') throw new Error('Ce planteur est déjà archivé.');
@@ -364,8 +362,8 @@ export async function archivePlanteur(accountId: string, planteurId: string): Pr
     const revision = row.revision + 1;
     await tx.runAsync(
       `UPDATE planteurs SET status = 'archived', updated_at = ?, revision = ?
-       WHERE id = ? AND account_id = ?`,
-      [ts, revision, planteurId, accountId]
+       WHERE id = ?`,
+      [ts, revision, planteurId]
     );
     await enqueueOutboxInTx(
       tx,
@@ -386,9 +384,9 @@ export async function listParcellesForPlanteur(
   const db = await getDatabase();
   const rows = await db.getAllAsync<ParcelleDbRow>(
     `SELECT * FROM parcelles
-     WHERE account_id = ? AND planteur_id = ? AND status = 'active'
+     WHERE planteur_id = ? AND status = 'active'
      ORDER BY code`,
-    [accountId, planteurId]
+    [planteurId]
   );
   return rows.map(mapParcelle);
 }
@@ -399,8 +397,8 @@ export async function getParcelleById(
 ): Promise<ParcelleListItem | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<ParcelleDbRow>(
-    `SELECT * FROM parcelles WHERE id = ? AND account_id = ?`,
-    [parcelleId, accountId]
+    `SELECT * FROM parcelles WHERE id = ?`,
+    [parcelleId]
   );
   return row ? mapParcelle(row) : null;
 }
@@ -480,8 +478,8 @@ export async function updateParcelle(
   try {
     await runTransaction(db, async (tx) => {
       const row = await tx.getFirstAsync<ParcelleDbRow>(
-        `SELECT * FROM parcelles WHERE id = ? AND account_id = ?`,
-        [parcelleId, accountId]
+        `SELECT * FROM parcelles WHERE id = ?`,
+        [parcelleId]
       );
       if (!row) throw new Error('Parcelle introuvable');
       if (row.status === 'archived') {
@@ -491,7 +489,7 @@ export async function updateParcelle(
       const revision = row.revision + 1;
       await tx.runAsync(
         `UPDATE parcelles SET code = ?, name = ?, superficie_declaree_ha = ?, annee_plantation = ?,
-         updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
+         updated_at = ?, revision = ? WHERE id = ?`,
         [
           input.code.trim(),
           input.name.trim(),
@@ -500,7 +498,6 @@ export async function updateParcelle(
           ts,
           revision,
           parcelleId,
-          accountId,
         ]
       );
 
@@ -540,8 +537,8 @@ export async function archiveParcelle(accountId: string, parcelleId: string): Pr
 
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<ParcelleDbRow>(
-      `SELECT * FROM parcelles WHERE id = ? AND account_id = ?`,
-      [parcelleId, accountId]
+      `SELECT * FROM parcelles WHERE id = ?`,
+      [parcelleId]
     );
     if (!row) throw new Error('Parcelle introuvable');
     if (row.status === 'archived') throw new Error('Cette parcelle est déjà archivée.');
@@ -549,8 +546,8 @@ export async function archiveParcelle(accountId: string, parcelleId: string): Pr
     const revision = row.revision + 1;
     await tx.runAsync(
       `UPDATE parcelles SET status = 'archived', updated_at = ?, revision = ?
-       WHERE id = ? AND account_id = ?`,
-      [ts, revision, parcelleId, accountId]
+       WHERE id = ?`,
+      [ts, revision, parcelleId]
     );
     await enqueueOutboxInTx(
       tx,

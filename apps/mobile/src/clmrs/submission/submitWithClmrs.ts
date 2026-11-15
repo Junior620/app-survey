@@ -109,8 +109,8 @@ export async function submitSurveyWithClmrs(input: {
 
   await runTransaction(db, async (tx) => {
     const existing = await tx.getFirstAsync<{ id: string; revision: number }>(
-      `SELECT id, revision FROM survey_responses WHERE id = ? AND account_id = ?`,
-      [responseId, input.accountId]
+      `SELECT id, revision FROM survey_responses WHERE id = ?`,
+      [responseId]
     );
 
     let revision = 1;
@@ -121,7 +121,7 @@ export async function submitSurveyWithClmrs(input: {
           payload_json = ?, current_step = 1, business_status = 'submitted', updated_at = ?,
           revision = ?, transfer_status = 'pending',
           site_id = ?, target_type = ?, target_id = ?
-         WHERE id = ? AND account_id = ?`,
+         WHERE id = ?`,
         [
           JSON.stringify(payload),
           ts,
@@ -130,7 +130,6 @@ export async function submitSurveyWithClmrs(input: {
           input.targetType ?? null,
           input.targetId ?? null,
           responseId,
-          input.accountId,
         ]
       );
       await enqueueOutboxInTx(

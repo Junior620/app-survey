@@ -63,24 +63,23 @@ export async function listMissionsForSite(
   const rows = siteId
     ? statusFilter === 'all'
       ? await db.getAllAsync<MissionDbRow>(
-          `SELECT * FROM missions WHERE account_id = ? AND site_id = ?
+          `SELECT * FROM missions WHERE site_id = ?
            ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, due_at ASC`,
-          [accountId, siteId]
+          [siteId]
         )
       : await db.getAllAsync<MissionDbRow>(
-          `SELECT * FROM missions WHERE account_id = ? AND site_id = ? AND status = ?
+          `SELECT * FROM missions WHERE site_id = ? AND status = ?
            ORDER BY due_at ASC`,
-          [accountId, siteId, statusFilter]
+          [siteId, statusFilter]
         )
     : statusFilter === 'all'
       ? await db.getAllAsync<MissionDbRow>(
-          `SELECT * FROM missions WHERE account_id = ?
-           ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, due_at ASC`,
-          [accountId]
+          `SELECT * FROM missions ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, due_at ASC`,
+          []
         )
       : await db.getAllAsync<MissionDbRow>(
-          `SELECT * FROM missions WHERE account_id = ? AND status = ? ORDER BY due_at ASC`,
-          [accountId, statusFilter]
+          `SELECT * FROM missions WHERE status = ? ORDER BY due_at ASC`,
+          [statusFilter]
         );
   return rows.map(mapMission);
 }
@@ -91,8 +90,8 @@ export async function getMissionById(
 ): Promise<MissionRow | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<MissionDbRow>(
-    `SELECT * FROM missions WHERE id = ? AND account_id = ?`,
-    [missionId, accountId]
+    `SELECT * FROM missions WHERE id = ?`,
+    [missionId]
   );
   return row ? mapMission(row) : null;
 }
@@ -188,8 +187,8 @@ export async function updateMission(
 
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<MissionDbRow>(
-      `SELECT * FROM missions WHERE id = ? AND account_id = ?`,
-      [missionId, accountId]
+      `SELECT * FROM missions WHERE id = ?`,
+      [missionId]
     );
     if (!row) throw new Error('Mission introuvable');
     if (row.status !== 'todo') {
@@ -199,7 +198,7 @@ export async function updateMission(
     const priority = input.priority || row.priority;
     await tx.runAsync(
       `UPDATE missions SET type = ?, object_label = ?, due_at = ?, priority = ?,
-       updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
+       updated_at = ?, revision = ? WHERE id = ?`,
       [
         input.type.trim(),
         input.objectLabel?.trim() || null,
@@ -208,7 +207,6 @@ export async function updateMission(
         ts,
         revision,
         missionId,
-        accountId,
       ]
     );
     updated = {
@@ -243,8 +241,8 @@ async function setMissionStatus(
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<MissionDbRow>(
-      `SELECT * FROM missions WHERE id = ? AND account_id = ?`,
-      [missionId, accountId]
+      `SELECT * FROM missions WHERE id = ?`,
+      [missionId]
     );
     if (!row) throw new Error('Mission introuvable');
     if (row.status !== 'todo') {
@@ -252,8 +250,8 @@ async function setMissionStatus(
     }
     const revision = row.revision + 1;
     await tx.runAsync(
-      `UPDATE missions SET status = ?, updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
-      [status, ts, revision, missionId, accountId]
+      `UPDATE missions SET status = ?, updated_at = ?, revision = ? WHERE id = ?`,
+      [status, ts, revision, missionId]
     );
     await enqueueOutboxInTx(
       tx,

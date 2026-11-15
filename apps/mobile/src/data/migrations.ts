@@ -632,4 +632,39 @@ export async function runMigrations(db: AppDatabase): Promise<void> {
       await tx.execAsync(`PRAGMA user_version = 9`);
     });
   }
+
+  if (version < 10) {
+    // Built-in questionnaires used one id per agent (`enquete-menage:<account>`); they now
+    // share one id on every phone so the agents of a site see each other's responses.
+    const builtIns = ['enquete-menage', 'protection-enfant-education', 'enquete-annuelle-exploitation'];
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`PRAGMA defer_foreign_keys = ON`);
+      for (const stable of builtIns) {
+        const old = `${stable}:%`;
+        await tx.runAsync(`UPDATE OR IGNORE questionnaires SET id = ? WHERE id LIKE ?`, [stable, old]);
+        await tx.runAsync(
+          `UPDATE OR IGNORE questionnaire_versions
+           SET questionnaire_id = ?, id = ? || ':v' || version_number
+           WHERE questionnaire_id LIKE ?`,
+          [stable, stable, old]
+        );
+        await tx.runAsync(
+          `UPDATE OR IGNORE questionnaire_assignments
+           SET questionnaire_id = ?, id = ? || ':' || site_id
+           WHERE questionnaire_id LIKE ?`,
+          [stable, stable, old]
+        );
+        // Copies left by another account on the same phone duplicate the shared rows.
+        await tx.runAsync(`DELETE FROM questionnaire_assignments WHERE questionnaire_id LIKE ?`, [old]);
+        await tx.runAsync(`DELETE FROM questionnaire_versions WHERE questionnaire_id LIKE ?`, [old]);
+        await tx.runAsync(`DELETE FROM questionnaires WHERE id LIKE ?`, [old]);
+        await tx.runAsync(`UPDATE survey_responses SET template_key = ? WHERE template_key LIKE ?`, [stable, old]);
+        await tx.runAsync(
+          `UPDATE OR IGNORE survey_consents SET questionnaire_id = ? WHERE questionnaire_id LIKE ?`,
+          [stable, old]
+        );
+      }
+      await tx.execAsync(`PRAGMA user_version = 10`);
+    });
+  }
 }
