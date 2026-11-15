@@ -40,6 +40,8 @@ import { getRemoteServiceState } from '../../../src/data/syncService';
 import { formatFirstName, formatRoleLabel } from '../../../src/utils/roleLabels';
 import { haptics } from '../../../src/utils/haptics';
 import { confirmLogout } from '../../../src/utils/confirmLogout';
+import { getActiveCampaign } from '../../../src/data/repositories/campaignsRepository';
+import type { Campaign } from '../../../src/survey/campaigns';
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -114,6 +116,7 @@ export default function AdminHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -130,7 +133,11 @@ export default function AdminHomeScreen() {
           await hydrateSite();
           const siteId = useSiteContext.getState().currentSiteId;
           const dash = await loadAdminDashboard(accountId, siteId);
-          if (!cancelled) setData(dash);
+          const campaign = await getActiveCampaign();
+          if (!cancelled) {
+            setData(dash);
+            setActiveCampaign(campaign);
+          }
         } catch (e: unknown) {
           if (!cancelled) {
             setError(e instanceof Error ? e.message : t('admin.loadError'));
@@ -388,6 +395,12 @@ export default function AdminHomeScreen() {
                 title={t('admin.reports')}
                 description={t('admin.reportsDesc')}
                 onPress={() => router.push('/(protected)/(admin)/rapports' as never)}
+              />
+              <AdminModuleRow
+                icon="calendar"
+                title={t('campaigns.module')}
+                description={activeCampaign ? t('campaigns.activeNow', { name: activeCampaign.name, end: activeCampaign.endsOn }) : t('campaigns.noneActive')}
+                onPress={() => router.push('/(protected)/(admin)/campagnes' as never)}
               />
               <AdminModuleRow
                 icon="questionnaire"

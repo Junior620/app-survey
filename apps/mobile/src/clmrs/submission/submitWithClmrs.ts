@@ -10,6 +10,7 @@ import {
 import { getDatabase, newId, nowIso, runTransaction } from '../../data/db';
 import { enqueueOutboxInTx } from '../../data/repositories/outboxRepository';
 import { getSurveyResponse } from '../../data/repositories/surveyResponsesRepository';
+import { getActiveCampaign } from '../../data/repositories/campaignsRepository';
 import {
   ensureClmrsSeeds,
   getFactMapping,
@@ -59,6 +60,7 @@ export async function submitSurveyWithClmrs(input: {
   skipChildDetection?: boolean;
 }): Promise<ClmrsSubmitResult> {
   const db = await getDatabase();
+  const campaignId = (await getActiveCampaign())?.id ?? null;
   const ts = nowIso();
   const responseId = input.responseId ?? newId();
   const payload = { ...input.answers, meta: input.meta };
@@ -144,8 +146,9 @@ export async function submitSurveyWithClmrs(input: {
       await tx.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, target_type, target_id,
-          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', 'pending', 1, ?, ?, ?, 1)`,
+          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision,
+          campaign_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', 'pending', 1, ?, ?, ?, 1, ?)`,
         [
           responseId,
           input.accountId,
@@ -157,6 +160,7 @@ export async function submitSurveyWithClmrs(input: {
           JSON.stringify(payload),
           ts,
           ts,
+          campaignId,
         ]
       );
       await enqueueOutboxInTx(

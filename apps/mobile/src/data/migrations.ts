@@ -609,4 +609,27 @@ export async function runMigrations(db: AppDatabase): Promise<void> {
       await tx.execAsync(`PRAGMA user_version = 8`);
     });
   }
+
+  if (version < 9) {
+    await runTransaction(db, async (tx) => {
+      await tx.execAsync(`
+        CREATE TABLE IF NOT EXISTS campaigns (
+          id TEXT PRIMARY KEY NOT NULL,
+          account_id TEXT NOT NULL,
+          cooperative_id TEXT,
+          name TEXT NOT NULL,
+          starts_on TEXT NOT NULL,
+          ends_on TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          revision INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE INDEX IF NOT EXISTS idx_campaigns_dates ON campaigns(status, starts_on, ends_on);
+      `);
+      // Campaign the response was started in (null before campaigns existed: matched by date).
+      await tx.execAsync(`ALTER TABLE survey_responses ADD COLUMN campaign_id TEXT`);
+      await tx.execAsync(`PRAGMA user_version = 9`);
+    });
+  }
 }

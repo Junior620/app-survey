@@ -60,6 +60,8 @@ import {
 import { withDerivedSignals } from '../../src/survey/household/householdSignals';
 import { seedPlanterRespondent } from '../../src/survey/household/planterRespondent';
 import { getPlanteurById } from '../../src/data/repositories/planteursRepository';
+import { getActiveCampaign, getCampaign } from '../../src/data/repositories/campaignsRepository';
+import { responseInCampaign } from '../../src/survey/campaigns';
 
 export default function SurveyRunScreen() {
   const { t } = useTranslation();
@@ -177,7 +179,23 @@ export default function SurveyRunScreen() {
             );
             return;
           }
-          setDefinition(def);
+          const activeCampaign = await getActiveCampaign();
+          // The response's own campaign (an older response keeps its campaign), else the active one.
+          const responseCampaign = existing?.campaignId
+            ? await getCampaign(existing.campaignId)
+            : activeCampaign;
+          if (!alive) return;
+          setDefinition(
+            responseCampaign && def.referencePeriods?.refperiod
+              ? {
+                  ...def,
+                  referencePeriods: {
+                    ...def.referencePeriods,
+                    refperiod: t('surveys.campaignPeriod', { name: responseCampaign.name }),
+                  },
+                }
+              : def
+          );
           if (existing) setResponseId(existing.id);
           setConsultOnly(existing?.businessStatus === 'submitted');
           if (def.answerRetention === 'inactive_branch') {
@@ -189,6 +207,8 @@ export default function SurveyRunScreen() {
               if (def.requiresRoster) {
                 const households = rows
                   .filter((row) => row.templateKey.startsWith(HOUSEHOLD_QUESTIONNAIRE_ID))
+                  // Same campaign only: last year's household must not feed this year's education survey.
+                  .filter((row) => !activeCampaign || responseInCampaign(row, activeCampaign))
                   .flatMap((row) => {
                     const linked = asTree(row.payload);
                     return linked

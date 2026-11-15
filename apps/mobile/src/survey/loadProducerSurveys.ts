@@ -8,6 +8,13 @@ import {
 import { ensureAnnualExploitationPublished } from './annual/ensureAnnualExploitation';
 import { ensureHouseholdSurveysPublished } from './household/ensureHouseholdSurveys';
 import { hubForCategory, type SurveyHubId } from './surveyHubCategories';
+import { listCampaigns } from '../data/repositories/campaignsRepository';
+import {
+  isPerCampaignCategory,
+  pickActiveCampaign,
+  pickCampaignResponse,
+  previousCampaignResponses,
+} from './campaigns';
 
 export type ProducerSurveyStatus = 'todo' | 'in_progress' | 'done';
 
@@ -24,6 +31,8 @@ export type ProducerSurveyItem = {
   responseId: string | null;
   updatedAt: string | null;
   pendingSync: boolean;
+  /** Responses of earlier campaigns, for consultation. */
+  previous: Array<{ responseId: string; versionNumber: string; campaignName: string | null; updatedAt: string }>;
 };
 
 function statusOf(row: SurveyResponseRecord | undefined): ProducerSurveyStatus {
@@ -44,18 +53,30 @@ export async function loadProducerSurveys(
 ): Promise<ProducerSurveyItem[]> {
   await ensureAnnualExploitationPublished(accountId, siteId);
   await ensureHouseholdSurveysPublished(accountId, siteId);
-  const [assignments, responses] = await Promise.all([
+  const [assignments, responses, campaigns] = await Promise.all([
     listActiveAssignmentsForSite(accountId, siteId),
     listResponsesForTarget(accountId, planteurId),
+    listCampaigns(),
   ]);
-
-  const latest = new Map<string, SurveyResponseRecord>();
-  for (const row of responses) {
-    if (!latest.has(row.templateKey)) latest.set(row.templateKey, row);
-  }
+  const campaign = pickActiveCampaign(campaigns);
+  const campaignName = (id: string | null) => campaigns.find((item) => item.id === id)?.name ?? null;
 
   return assignments.map((a) => {
-    const response = latest.get(a.questionnaireId);
+    // Household, education and annual surveys restart with every campaign.
+    const response: SurveyResponseRecord | undefined = pickCampaignResponse(
+      responses,
+      a.questionnaireId,
+      a.category,
+      campaign
+    );
+    const previous = previousCampaignResponses(responses, a.questionnaireId, a.category, campaign)
+      .filter((row) => row.businessStatus === 'submitted')
+      .map((row) => ({
+        responseId: row.id,
+        versionNumber: row.templateVersion,
+        campaignName: campaignName(row.campaignId),
+        updatedAt: row.updatedAt,
+      }));
     return {
       assignmentId: a.id,
       questionnaireId: a.questionnaireId,
@@ -63,12 +84,13 @@ export async function loadProducerSurveys(
       title: a.title,
       category: a.category,
       hub: hubForCategory(a.category),
-      campaign: a.campaign,
+      campaign: isPerCampaignCategory(a.category) && campaign ? campaign.name : a.campaign,
       status: statusOf(response),
       currentStep: response?.currentStep ?? 0,
       responseId: response?.id ?? null,
       updatedAt: response?.updatedAt ?? null,
       pendingSync: response?.transferStatus === 'pending',
+      previous,
     };
   });
 }
@@ -102,6 +124,7 @@ export async function loadSiteSurveyCatalog(
       responseId: draft?.id ?? null,
       updatedAt: draft?.updatedAt ?? null,
       pendingSync: draft?.transferStatus === 'pending',
+      previous: [],
     });
   }
   return items;

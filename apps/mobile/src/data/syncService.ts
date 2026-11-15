@@ -316,12 +316,48 @@ async function pushOne(
   }
 
   if (entityType === 'survey_response') {
+    // Identity lives on the local row, not in the answers payload.
+    const db = await getDatabase();
+    const local = await db.getFirstAsync<{
+      template_key: string;
+      template_version: string;
+      site_id: string | null;
+      target_type: string | null;
+      target_id: string | null;
+      current_step: number | null;
+      campaign_id: string | null;
+      business_status: string;
+      created_at: string;
+    }>(
+      `SELECT template_key, template_version, site_id, target_type, target_id, current_step,
+              campaign_id, business_status, created_at
+       FROM survey_responses WHERE id = ?`,
+      [entityId]
+    );
     await upsertMirror('survey_responses_remote', {
       ...base,
-      site_id: payload.siteId ?? payload.site_id ?? null,
-      template_key: String(payload.templateKey ?? payload.template_key ?? 'unknown'),
-      template_version: String(payload.templateVersion ?? payload.template_version ?? '1'),
-      business_status: String(payload.businessStatus ?? payload.business_status ?? 'draft'),
+      created_at: local?.created_at ?? base.created_at,
+      site_id: local?.site_id ?? payload.siteId ?? payload.site_id ?? null,
+      template_key: String(local?.template_key ?? payload.templateKey ?? 'unknown'),
+      template_version: String(local?.template_version ?? payload.templateVersion ?? '1'),
+      business_status: String(local?.business_status ?? payload.businessStatus ?? 'draft'),
+      target_type: local?.target_type ?? null,
+      target_id: local?.target_id ?? null,
+      current_step: local?.current_step ?? null,
+      campaign_id: local?.campaign_id ?? null,
+      payload,
+    });
+    return;
+  }
+
+  if (entityType === 'campaign') {
+    await upsertMirror('campaigns', {
+      ...base,
+      cooperative_id: String(payload.cooperativeId ?? cooperativeId),
+      name: String(payload.name ?? ''),
+      starts_on: String(payload.startsOn ?? ''),
+      ends_on: String(payload.endsOn ?? ''),
+      status: String(payload.status ?? 'active'),
       payload,
     });
     return;

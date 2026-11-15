@@ -14,6 +14,7 @@ import { getConflict, markConflictStatus, upsertOpenConflict } from './syncConfl
 
 /** Tables applied to local SQLite. Others keep their cursor at zero so a later version backfills them. */
 const PULL_APPLIED_TABLES = new Set<PullMirrorTable>([
+  'campaigns',
   'sites',
   'secteurs',
   'planteurs',
@@ -147,6 +148,7 @@ async function localRevision(
     questionnaire: 'questionnaires',
     attachment: 'attachments',
     geometry_version: 'geometry_versions',
+    campaign: 'campaigns',
   };
   const table = tableMap[entityType];
   if (!table) return null;
@@ -228,6 +230,7 @@ function entityTypeForTable(table: PullMirrorTable): string {
     questionnaire_assignments_remote: 'questionnaire_assignment',
     attachments_meta: 'attachment',
     geometry_versions_remote: 'geometry_version',
+    campaigns: 'campaign',
   };
   return map[table] || table;
 }
@@ -388,10 +391,15 @@ async function applyRemoteRow(
       await db.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, business_status,
+          target_type, target_id, current_step, campaign_id,
           transfer_status, payload_json, created_at, updated_at, revision
-        ) VALUES (?, ?, ?, ?, ?, ?, 'acked', ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'acked', ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           business_status = excluded.business_status,
+          target_type = COALESCE(excluded.target_type, survey_responses.target_type),
+          target_id = COALESCE(excluded.target_id, survey_responses.target_id),
+          current_step = excluded.current_step,
+          campaign_id = COALESCE(excluded.campaign_id, survey_responses.campaign_id),
           payload_json = excluded.payload_json,
           transfer_status = 'acked',
           updated_at = excluded.updated_at,
@@ -403,7 +411,38 @@ async function applyRemoteRow(
           String(row.template_key ?? 'unknown'),
           String(row.template_version ?? '1'),
           String(row.business_status ?? 'draft'),
+          bind(row.target_type),
+          bind(row.target_id),
+          Number(row.current_step ?? 1),
+          bind(row.campaign_id),
           JSON.stringify(payload),
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'campaigns': {
+      await db.runAsync(
+        `INSERT INTO campaigns (
+          id, account_id, cooperative_id, name, starts_on, ends_on, status, created_at, updated_at, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          starts_on = excluded.starts_on,
+          ends_on = excluded.ends_on,
+          status = excluded.status,
+          updated_at = excluded.updated_at,
+          revision = excluded.revision`,
+        [
+          id,
+          ownerAccount,
+          bind(row.cooperative_id),
+          String(row.name ?? payload.name ?? ''),
+          String(row.starts_on ?? payload.startsOn ?? ''),
+          String(row.ends_on ?? payload.endsOn ?? ''),
+          String(row.status ?? payload.status ?? 'active'),
           created,
           ts,
           remoteRev,
@@ -710,6 +749,7 @@ const LOCAL_TABLE_BY_ENTITY: Record<string, string> = {
   mission: 'missions',
   survey_response: 'survey_responses',
   questionnaire: 'questionnaires',
+  campaign: 'campaigns',
 };
 
 /**

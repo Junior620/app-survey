@@ -42,7 +42,6 @@ export default function QuestionnaireAssignScreen() {
 
   const [sites, setSites] = useState<SiteListItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [campaign, setCampaign] = useState('');
   const [frequency, setFrequency] = useState<AssignmentFrequency>('multiple_visits');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,8 +68,6 @@ export default function QuestionnaireAssignScreen() {
           setSelected(
             new Set(assignments.filter((a) => a.status === 'active').map((a) => a.siteId))
           );
-          const camp = assignments.find((a) => a.campaign)?.campaign;
-          if (camp) setCampaign(camp);
         } catch (e) {
           if (alive) setError(e instanceof Error ? e.message : 'Erreur');
         } finally {
@@ -109,12 +106,9 @@ export default function QuestionnaireAssignScreen() {
             message="Les assignments sont visibles pour l’agent sur les sites de la même base locale. Pas de push multi-appareils (sync non configurée)."
           />
 
-          <FormTextField
-            label="Campagne"
-            value={campaign}
-            onChangeText={setCampaign}
-            placeholder="ex. Enquête 2026"
-          />
+          <Text style={styles.label}>
+            Campagne : définie dans Admin › Campagnes (les enquêtes ménage, annuelle et scolarisation repartent à zéro à chaque campagne).
+          </Text>
 
           <Text style={styles.label}>Fréquence</Text>
           <View style={styles.row}>
@@ -154,7 +148,6 @@ export default function QuestionnaireAssignScreen() {
               try {
                 await upsertAssignments(accountId, userRole, id!, {
                   siteIds: [...selected],
-                  campaign,
                   startsAt: nowIso(),
                   frequencyRule: frequency,
                 });

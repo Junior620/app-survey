@@ -2,6 +2,7 @@ import type { SurveyAnswerMap } from '@appsurvey/shared';
 import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import type { ResponseTree } from '../../survey/responseTree';
+import { getActiveCampaign } from './campaignsRepository';
 
 export type SurveyResponseRecord = {
   id: string;
@@ -14,6 +15,8 @@ export type SurveyResponseRecord = {
   businessStatus: string;
   transferStatus: string;
   currentStep: number;
+  /** Campaign the response was started in; null for responses saved before campaigns. */
+  campaignId: string | null;
   payload: SurveyAnswerMap & { meta?: Record<string, unknown> };
   createdAt: string;
   updatedAt: string;
@@ -31,6 +34,7 @@ type Row = {
   business_status: string;
   transfer_status: string;
   current_step: number;
+  campaign_id: string | null;
   payload_json: string;
   created_at: string;
   updated_at: string;
@@ -55,6 +59,7 @@ function mapRow(r: Row): SurveyResponseRecord {
     businessStatus: r.business_status,
     transferStatus: r.transfer_status,
     currentStep: r.current_step,
+    campaignId: r.campaign_id ?? null,
     payload,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -118,6 +123,7 @@ export async function saveSurveyResponse(input: {
       }
     : { ...input.answers, meta: input.meta };
   const id = input.responseId ?? newId();
+  const campaignId = (await getActiveCampaign())?.id ?? null;
 
   await runTransaction(db, async (tx) => {
     const existing = await tx.getFirstAsync<{ id: string; revision: number }>(
@@ -160,8 +166,9 @@ export async function saveSurveyResponse(input: {
       await tx.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, target_type, target_id,
-          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 1)`,
+          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision,
+          campaign_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 1, ?)`,
         [
           id,
           input.accountId,
@@ -175,6 +182,7 @@ export async function saveSurveyResponse(input: {
           JSON.stringify(payload),
           ts,
           ts,
+          input.businessStatus === 'preview' ? null : campaignId,
         ]
       );
       if (input.businessStatus !== 'preview') {
