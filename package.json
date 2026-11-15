@@ -6,10 +6,11 @@
     "packages/*"
   ],
   "scripts": {
-    "db:login": "npx supabase login",
-    "db:link": "npx supabase link --project-ref tsttdhoecetcouywjjsf",
-    "db:push": "npx supabase db push",
-    "db:status": "npx supabase migration list",
+    "db:login": "npx supabase@3.1.0 login",
+    "db:link": "npx supabase@3.1.0 link --project-ref tsttdhoecetcouywjjsf",
+    "db:push": "npx supabase@3.1.0 db push --remote",
+    "db:push:check": "npx supabase@3.1.0 db push --remote --dry-run",
+    "db:status": "npx supabase@3.1.0 migration list --remote",
     "mobile:build:apk": "npm run build:apk --workspace @appsurvey/mobile"
   },
   "devDependencies": {
