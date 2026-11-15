@@ -144,8 +144,11 @@ export async function getConsentForQuestionnaire(
 ): Promise<SurveyConsentRecord | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<ConsentRow>(
+    // Two agents may have recorded one each (offline): prefer an acceptance, then the latest.
     `SELECT ${SELECT_COLS} FROM survey_consents
-     WHERE planteur_id = ? AND questionnaire_id = ? AND consent_version = ?`,
+     WHERE planteur_id = ? AND questionnaire_id = ? AND consent_version = ?
+     ORDER BY CASE status WHEN 'accepted' THEN 0 WHEN 'declined' THEN 1 ELSE 2 END, updated_at DESC
+     LIMIT 1`,
     [planteurId, questionnaireId, consentVersion]
   );
   return row ? mapRow(row) : null;

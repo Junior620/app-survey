@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   canStartSurvey,
+  withoutConsentPhones,
   consentRowFor,
   PLANTER_CONSENT_SCOPE,
   consentListPhase,
@@ -146,5 +147,38 @@ describe('consentement unique par planteur', () => {
     assert.equal(consentRowFor(rows, 'menage')?.status, 'declined');
     assert.equal(consentRowFor(rows, 'education')?.questionnaireId, 'annuelle');
     assert.equal(consentRowFor([], 'menage'), null);
+  });
+});
+
+describe('consentement partagé entre agents du site', () => {
+  it('les numéros ne quittent pas la copie privée, les statuts oui', () => {
+    const shared = withoutConsentPhones({
+      planteurId: 'p1',
+      status: 'accepted',
+      respondentPhoneStatus: 'provided',
+      respondentPhone: '+237677123456',
+      otherHouseholdPhoneStatus: 'provided',
+      otherHouseholdPhone: '+237699000000',
+    });
+    assert.equal('respondentPhone' in shared, false);
+    assert.equal('otherHouseholdPhone' in shared, false);
+    assert.equal(shared.respondentPhoneStatus, 'provided');
+  });
+
+  it('un consentement reçu sans numéro reste complet pour l’autre agent', () => {
+    const pulled: ConsentSnapshot = {
+      ...EMPTY_CONSENT,
+      presentedConfirmed: true,
+      respondentName: 'Awa',
+      status: 'accepted',
+      respondentPhoneStatus: 'provided',
+      respondentPhone: null,
+      otherHouseholdPhoneStatus: 'provided',
+      otherHouseholdPhone: null,
+      hasSignature: true,
+      hasPhoto: true,
+    };
+    assert.equal(canStartSurvey(pulled), true);
+    assert.equal(canStartSurvey({ ...pulled, respondentPhone: '123' }), false);
   });
 });

@@ -18,6 +18,7 @@ const PULL_APPLIED_TABLES = new Set<PullMirrorTable>([
   'sites',
   'secteurs',
   'planteurs',
+  'survey_consents_remote',
   'parcelles',
   'formations',
   'missions',
@@ -150,6 +151,7 @@ async function localRevision(
     attachment: 'attachments',
     geometry_version: 'geometry_versions',
     campaign: 'campaigns',
+    survey_consent: 'survey_consents',
   };
   const table = tableMap[entityType];
   if (!table) return null;
@@ -232,6 +234,7 @@ function entityTypeForTable(table: PullMirrorTable): string {
     attachments_meta: 'attachment',
     geometry_versions_remote: 'geometry_version',
     campaigns: 'campaign',
+    survey_consents_remote: 'survey_consent',
   };
   return map[table] || table;
 }
@@ -417,6 +420,54 @@ async function applyRemoteRow(
           Number(row.current_step ?? 1),
           bind(row.campaign_id),
           JSON.stringify(payload),
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'survey_consents_remote': {
+      const planteurId = String(row.planteur_id ?? payload.planteurId ?? '');
+      if (!planteurId || !(await rowExists('planteurs', planteurId))) {
+        throw new Error(`consentement ${id}: planteur inconnu localement (${planteurId || '∅'})`);
+      }
+      // Phone numbers are not shared: a pulled row keeps its local phone columns (empty for others).
+      await db.runAsync(
+        `INSERT INTO survey_consents (
+          id, account_id, planteur_id, questionnaire_id, version_number, definition_id,
+          consent_version, language, status, presented_confirmed, agent_id, agent_name_snapshot,
+          respondent_name, respondent_phone_status, other_household_phone_status,
+          decided_at, created_at, updated_at, transfer_status, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'acked', ?)
+        ON CONFLICT(id) DO UPDATE SET
+          status = excluded.status,
+          presented_confirmed = excluded.presented_confirmed,
+          respondent_name = excluded.respondent_name,
+          respondent_phone_status = excluded.respondent_phone_status,
+          other_household_phone_status = excluded.other_household_phone_status,
+          agent_name_snapshot = excluded.agent_name_snapshot,
+          decided_at = excluded.decided_at,
+          updated_at = excluded.updated_at,
+          transfer_status = 'acked',
+          revision = excluded.revision`,
+        [
+          id,
+          ownerAccount,
+          planteurId,
+          String(row.questionnaire_id ?? payload.questionnaireId ?? ''),
+          String(payload.versionNumber ?? '0'),
+          String(row.definition_id ?? payload.definitionId ?? ''),
+          String(row.consent_version ?? payload.consentVersion ?? ''),
+          String(row.language ?? payload.language ?? 'fr'),
+          String(row.status ?? payload.status ?? 'in_progress'),
+          row.presented_confirmed ? 1 : 0,
+          String(payload.agentId ?? ownerAccount),
+          String(row.agent_name_snapshot ?? payload.agentNameSnapshot ?? ''),
+          bind(row.respondent_name ?? payload.respondentName),
+          bind(row.respondent_phone_status ?? payload.respondentPhoneStatus),
+          bind(row.other_household_phone_status ?? payload.otherHouseholdPhoneStatus),
+          bind(row.decided_at ?? payload.decidedAt),
           created,
           ts,
           remoteRev,
