@@ -32,6 +32,7 @@ import {
   type AnswerPath,
   type ResponseTree,
 } from './responseTree';
+import { PLANTER_ROW_ID } from './household/planterRespondent';
 
 type LinkedResponses = Array<{
   questionnaireId: string;
@@ -394,24 +395,30 @@ function RosterListEditor({
   const inactive = rows.filter((row) => !row.activity.active);
   return (
     <View style={styles.stack}>
-      {active.map((row, index) => (
+      {active.map((row, index) => {
+        // The planter is the household respondent: their row comes from the planter record.
+        const planter = member && row.rowId === PLANTER_ROW_ID;
+        return (
         <View key={row.rowId} style={styles.listRow}>
-          <Text style={styles.listIndex}>{member ? `Membre ${index + 1}` : `Parcelle ${index + 1}`}</Text>
+          <Text style={styles.listIndex}>
+            {planter ? 'Planteur (répondant)' : member ? `Membre ${index + 1}` : `Parcelle ${index + 1}`}
+          </Text>
           <TextInput
             value={row.sourceValue}
-            editable={!readOnly}
+            editable={!readOnly && !planter}
             onChangeText={(text) => onChange(renameRosterRow(tree, rosterKey, row.rowId, text))}
             placeholder={member ? 'Prénom' : 'Nom de la parcelle'}
             placeholderTextColor={colors.horsLigne}
             style={styles.listInput}
           />
-          {readOnly ? null : (
+          {readOnly || planter ? null : (
             <Pressable onPress={() => onChange(setRosterRowActivity(tree, rosterKey, row.rowId, false))} style={styles.textButton}>
               <Text style={styles.textButtonLabel}>Retirer</Text>
             </Pressable>
           )}
         </View>
-      ))}
+        );
+      })}
       {readOnly ? null : (
         <Pressable onPress={() => onChange(addRosterRow(tree, rosterKey, newRowId(), ''))} style={styles.addButton}>
           <Text style={styles.addLabel}>{member ? 'Ajouter un membre' : 'Ajouter une parcelle'}</Text>

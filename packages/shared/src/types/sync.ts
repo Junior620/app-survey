@@ -32,7 +32,8 @@ export type OutboxEntityType =
   | 'geometry_version'
   | 'detection_result'
   | 'critical_case'
-  | 'remediation_case';
+  | 'remediation_case'
+  | 'campaign';
 
 export type OutboxOperation = 'create' | 'update' | 'delete' | 'archive';
 

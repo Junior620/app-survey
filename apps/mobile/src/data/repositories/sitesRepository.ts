@@ -139,8 +139,8 @@ export async function updateSite(
     let updated: Site | null = null;
     await runTransaction(db, async (tx) => {
       const row = await tx.getFirstAsync<SiteRow>(
-        `SELECT * FROM sites WHERE id = ? AND account_id = ?`,
-        [siteId, accountId]
+        `SELECT * FROM sites WHERE id = ?`,
+        [siteId]
       );
       if (!row) throw new Error('Site introuvable');
       if (row.status === 'archived') {
@@ -150,7 +150,7 @@ export async function updateSite(
       const revision = row.revision + 1;
       await tx.runAsync(
         `UPDATE sites SET code = ?, name = ?, locality = ?, cooperative_id = ?, updated_at = ?, revision = ?
-         WHERE id = ? AND account_id = ?`,
+         WHERE id = ?`,
         [
           input.code.trim(),
           input.name.trim(),
@@ -159,7 +159,6 @@ export async function updateSite(
           ts,
           revision,
           siteId,
-          accountId,
         ]
       );
 
@@ -204,11 +203,11 @@ export async function getSiteDependencies(accountId: string, siteId: string) {
     missions: number;
   }>(
     `SELECT
-      (SELECT COUNT(*) FROM planteurs WHERE site_id = ? AND account_id = ?) AS planteurs,
+      (SELECT COUNT(*) FROM planteurs WHERE site_id = ?) AS planteurs,
       (SELECT COUNT(*) FROM secteurs WHERE site_id = ? AND account_id = ?) AS secteurs,
       (SELECT COUNT(*) FROM formations WHERE site_id = ? AND account_id = ?) AS formations,
       (SELECT COUNT(*) FROM missions WHERE site_id = ? AND account_id = ?) AS missions`,
-    [siteId, accountId, siteId, accountId, siteId, accountId, siteId, accountId]
+    [siteId, siteId, accountId, siteId, accountId, siteId, accountId]
   );
   return {
     planteurs: row?.planteurs ?? 0,

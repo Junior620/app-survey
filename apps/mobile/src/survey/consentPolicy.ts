@@ -61,7 +61,8 @@ export function respondentPhoneComplete(
   phone: string | null
 ): boolean {
   if (status === 'no_phone' || status === 'refused') return true;
-  if (status === 'provided') return isValidCameroonMobile(phone);
+  // Provided without a number: recorded by another agent, who keeps the number private.
+  if (status === 'provided') return phone == null || isValidCameroonMobile(phone);
   return false;
 }
 
@@ -70,7 +71,7 @@ export function otherHouseholdPhoneComplete(
   phone: string | null
 ): boolean {
   if (status === 'no_other_phone' || status === 'refused') return true;
-  if (status === 'provided') return isValidCameroonMobile(phone);
+  if (status === 'provided') return phone == null || isValidCameroonMobile(phone);
   return false;
 }
 
@@ -163,4 +164,43 @@ export function consentListPhase(
   if (snapshot && hasConsentProgress(snapshot) && !canStartSurvey(snapshot)) return 'consent_pending';
   if (responseStatus === 'in_progress') return 'in_progress';
   return 'todo';
+}
+
+/**
+ * Consent is given once per planter, at registration, and covers every questionnaire.
+ * Stored in survey_consents with this questionnaire_id. Rows written per questionnaire
+ * by earlier versions are still honoured.
+ */
+export const PLANTER_CONSENT_SCOPE = 'planteur';
+
+export type ConsentRowSummary = {
+  questionnaireId: string;
+  status: ConsentStatus;
+  snapshot: ConsentSnapshot;
+  ready: boolean;
+};
+
+/**
+ * Consent row that governs one questionnaire: the planter-level row, else an older refusal
+ * of this questionnaire, else any complete older consent of the planter, else this
+ * questionnaire's unfinished row.
+ */
+export function consentRowFor<T extends ConsentRowSummary>(rows: T[], questionnaireId: string): T | null {
+  return (
+    rows.find((row) => row.questionnaireId === PLANTER_CONSENT_SCOPE) ??
+    rows.find((row) => row.questionnaireId === questionnaireId && row.status === 'declined') ??
+    rows.find((row) => row.ready) ??
+    rows.find((row) => row.questionnaireId === questionnaireId) ??
+    null
+  );
+}
+
+/** Consent fields that never leave the author's private copy (statuses are shared, numbers are not). */
+const CONSENT_PHONE_NUMBER_KEYS = ['respondentPhone', 'otherHouseholdPhone', 'respondent_phone', 'other_household_phone'];
+
+/** Consent payload shared with the other agents of the planter's site. */
+export function withoutConsentPhones<T extends Record<string, unknown>>(payload: T): Partial<T> {
+  const shared: Record<string, unknown> = { ...payload };
+  for (const key of CONSENT_PHONE_NUMBER_KEYS) delete shared[key];
+  return shared as Partial<T>;
 }

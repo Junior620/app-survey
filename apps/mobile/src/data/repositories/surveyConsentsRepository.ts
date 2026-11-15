@@ -3,8 +3,11 @@ import { enqueueOutboxInTx } from './outboxRepository';
 import {
   canStartSurvey,
   CONSENT_POLICY,
+  PLANTER_CONSENT_SCOPE,
   EMPTY_CONSENT,
   resolveConsentStep,
+  consentRowFor,
+  type ConsentRowSummary,
   type ConsentSnapshot,
   type ConsentStep,
 } from '../../survey/consentPolicy';
@@ -15,6 +18,7 @@ import {
 } from '../../survey/phoneConsent';
 
 export type SurveyConsentStatus = 'in_progress' | 'accepted' | 'declined';
+
 
 export type SurveyConsentRecord = {
   id: string;
@@ -41,12 +45,8 @@ export type SurveyConsentRecord = {
   revision: number;
 };
 
-export type ConsentListRow = {
-  questionnaireId: string;
-  status: SurveyConsentStatus;
-  snapshot: ConsentSnapshot;
-  ready: boolean;
-};
+export type ConsentListRow = ConsentRowSummary;
+export { consentRowFor, PLANTER_CONSENT_SCOPE };
 
 type ConsentRow = {
   id: string;
@@ -144,9 +144,12 @@ export async function getConsentForQuestionnaire(
 ): Promise<SurveyConsentRecord | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<ConsentRow>(
+    // Two agents may have recorded one each (offline): prefer an acceptance, then the latest.
     `SELECT ${SELECT_COLS} FROM survey_consents
-     WHERE account_id = ? AND planteur_id = ? AND questionnaire_id = ? AND consent_version = ?`,
-    [accountId, planteurId, questionnaireId, consentVersion]
+     WHERE planteur_id = ? AND questionnaire_id = ? AND consent_version = ?
+     ORDER BY CASE status WHEN 'accepted' THEN 0 WHEN 'declined' THEN 1 ELSE 2 END, updated_at DESC
+     LIMIT 1`,
+    [planteurId, questionnaireId, consentVersion]
   );
   return row ? mapRow(row) : null;
 }
@@ -168,17 +171,17 @@ export async function listConsentRows(
   const db = await getDatabase();
   const rows = await db.getAllAsync<ConsentRow>(
     `SELECT ${SELECT_COLS} FROM survey_consents
-     WHERE account_id = ? AND planteur_id = ? AND consent_version = ?`,
-    [accountId, planteurId, consentVersion]
+     WHERE planteur_id = ? AND consent_version = ?`,
+    [planteurId, consentVersion]
   );
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const placeholders = ids.map(() => '?').join(', ');
   const attachments = await db.getAllAsync<{ entity_id: string; entity_type: string }>(
     `SELECT entity_id, entity_type FROM attachments
-     WHERE account_id = ? AND entity_type IN ('consent_signature', 'consent_photo')
+     WHERE entity_type IN ('consent_signature', 'consent_photo')
        AND entity_id IN (${placeholders})`,
-    [accountId, ...ids]
+    [...ids]
   );
   const byId = new Map<string, { hasSignature: boolean; hasPhoto: boolean }>();
   for (const row of rows) byId.set(row.id, { hasSignature: false, hasPhoto: false });
@@ -207,8 +210,8 @@ export async function consentArtifactFlags(
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ entity_type: string }>(
     `SELECT entity_type FROM attachments
-     WHERE account_id = ? AND entity_id = ? AND entity_type IN ('consent_signature', 'consent_photo')`,
-    [accountId, consentId]
+     WHERE entity_id = ? AND entity_type IN ('consent_signature', 'consent_photo')`,
+    [consentId]
   );
   const types = new Set(rows.map((r) => r.entity_type));
   return {
@@ -217,24 +220,42 @@ export async function consentArtifactFlags(
   };
 }
 
-export async function consentResumeStep(
+async function resumeFrom(
   accountId: string,
-  planteurId: string,
-  questionnaireId: string
-): Promise<{ step: ConsentStep; record: SurveyConsentRecord | null; snapshot: ConsentSnapshot }> {
-  const record = await getConsentForQuestionnaire(accountId, planteurId, questionnaireId);
-  if (!record) {
-    return { step: resolveConsentStep(EMPTY_CONSENT), record: null, snapshot: EMPTY_CONSENT };
-  }
+  record: SurveyConsentRecord
+): Promise<{ step: ConsentStep; record: SurveyConsentRecord; snapshot: ConsentSnapshot }> {
   const artifacts = await consentArtifactFlags(accountId, record.id);
   const snapshot = snapshotOf(record, artifacts);
   return { step: resolveConsentStep(snapshot), record, snapshot };
 }
 
+/**
+ * The planter's consent: the planter-level row, else (data from earlier versions) a refusal
+ * for this questionnaire, else any complete per-questionnaire consent of the same planter.
+ */
+export async function consentResumeStep(
+  accountId: string,
+  planteurId: string,
+  questionnaireId?: string | null
+): Promise<{ step: ConsentStep; record: SurveyConsentRecord | null; snapshot: ConsentSnapshot }> {
+  const planter = await getConsentForQuestionnaire(accountId, planteurId, PLANTER_CONSENT_SCOPE);
+  if (planter) return resumeFrom(accountId, planter);
+  if (questionnaireId) {
+    const own = await getConsentForQuestionnaire(accountId, planteurId, questionnaireId);
+    if (own?.status === 'declined') return resumeFrom(accountId, own);
+  }
+  const legacy = (await listConsentRows(accountId, planteurId)).find((row) => row.ready);
+  if (legacy) {
+    const record = await getConsentForQuestionnaire(accountId, planteurId, legacy.questionnaireId);
+    if (record) return resumeFrom(accountId, record);
+  }
+  return { step: resolveConsentStep(EMPTY_CONSENT), record: null, snapshot: EMPTY_CONSENT };
+}
+
 export async function hasValidAcceptedConsent(
   accountId: string,
   planteurId: string,
-  questionnaireId: string
+  questionnaireId?: string | null
 ): Promise<boolean> {
   const { snapshot } = await consentResumeStep(accountId, planteurId, questionnaireId);
   return canStartSurvey(snapshot);
@@ -243,7 +264,6 @@ export async function hasValidAcceptedConsent(
 export type ConsentIdentity = {
   accountId: string;
   planteurId: string;
-  questionnaireId: string;
   versionNumber: string;
   language: string;
   agentId: string;
@@ -272,12 +292,12 @@ function cleanedPhone(
   return normalized;
 }
 
-/** Insert or update the unique consent row. A declined row is never rewritten. */
+/** Insert or update the planter's consent row. A declined row is never rewritten. */
 export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatch): Promise<SurveyConsentRecord> {
   const existing = await getConsentForQuestionnaire(
     identity.accountId,
     identity.planteurId,
-    identity.questionnaireId
+    PLANTER_CONSENT_SCOPE
   );
   if (existing?.status === 'declined') return existing;
   if (
@@ -335,7 +355,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
       id,
       accountId: identity.accountId,
       planteurId: identity.planteurId,
-      questionnaireId: identity.questionnaireId,
+      questionnaireId: PLANTER_CONSENT_SCOPE,
       definitionId: CONSENT_POLICY.consentDefinitionId,
       consentVersion: CONSENT_POLICY.version,
       createdAt: ts,
@@ -397,7 +417,7 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
         respondent_name = ?, respondent_phone_status = ?, respondent_phone = ?,
         other_household_phone_status = ?, other_household_phone = ?,
         decided_at = ?, updated_at = ?, transfer_status = 'pending', revision = ?
-       WHERE id = ? AND account_id = ?`,
+       WHERE id = ?`,
       [
         next.versionNumber,
         next.language,
@@ -414,7 +434,6 @@ export async function patchConsent(identity: ConsentIdentity, patch: ConsentPatc
         next.updatedAt,
         next.revision,
         next.id,
-        identity.accountId,
       ]
     );
     await enqueueOutboxInTx(tx, identity.accountId, 'survey_consent', next.id, 'update', next, revision);

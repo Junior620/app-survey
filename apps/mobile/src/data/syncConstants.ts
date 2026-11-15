@@ -18,14 +18,18 @@ export const MIRROR_TABLE_BY_ENTITY: Record<string, string> = {
   questionnaire_assignment: 'questionnaire_assignments_remote',
   attachment: 'attachments_meta',
   geometry_version: 'geometry_versions_remote',
+  campaign: 'campaigns',
+  survey_consent: 'survey_consents_remote',
 };
 
 export const PULL_MIRROR_TABLES = [
   // FK order: parents before children (local SQLite enforces REFERENCES)
+  'campaigns',
   'sites',
   'villages',
   'secteurs',
   'planteurs',
+  'survey_consents_remote',
   'parcelles',
   'formations',
   'seances',

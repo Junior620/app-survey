@@ -129,6 +129,17 @@ export async function resetDatabaseConnection(): Promise<void> {
   seedPromise = null;
 }
 
+/** Deletes the operations database; the next getDatabase() recreates it (encrypted, migrated). */
+export async function deleteOperationsDatabase(): Promise<void> {
+  await resetDatabaseConnection();
+  await closeLeakedConnection();
+  try {
+    await SQLite.deleteDatabaseAsync(opsDbName());
+  } catch {
+    /* No file yet. */
+  }
+}
+
 type WebCrypto = {
   randomUUID?: () => string;
   getRandomValues?: (array: Uint8Array) => Uint8Array;

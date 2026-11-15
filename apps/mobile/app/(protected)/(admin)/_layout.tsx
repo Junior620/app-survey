@@ -16,6 +16,7 @@ function AdminLayoutContent() {
       <Stack.Screen name="diagnostic" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="rapports" />
+      <Stack.Screen name="campagnes" />
       <Stack.Screen name="users/index" />
       <Stack.Screen name="users/new" />
       <Stack.Screen name="users/[id]" />

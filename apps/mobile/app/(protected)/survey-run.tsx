@@ -8,6 +8,7 @@ import {
   SecondaryButton,
   ErrorState,
   LocalSaveIndicator,
+  ReadOnlyBanner,
   type LocalSaveState,
   KeyboardAwareScrollView,
 } from '../../src/components/common';
@@ -50,12 +51,17 @@ import { hasValidAcceptedConsent } from '../../src/data/repositories/surveyConse
 import {
   EDUCATION_QUESTIONNAIRE_ID,
   HOUSEHOLD_QUESTIONNAIRE_ID,
+  HOUSEHOLD_VERSION,
 } from '../../src/survey/household/householdSurvey';
 import {
   educationLinksForHousehold,
   selectHouseholdSource,
 } from '../../src/survey/household/householdLink';
 import { withDerivedSignals } from '../../src/survey/household/householdSignals';
+import { seedPlanterRespondent } from '../../src/survey/household/planterRespondent';
+import { getPlanteurById } from '../../src/data/repositories/planteursRepository';
+import { getActiveCampaign, getCampaign } from '../../src/data/repositories/campaignsRepository';
+import { responseInCampaign } from '../../src/survey/campaigns';
 
 export default function SurveyRunScreen() {
   const { t } = useTranslation();
@@ -111,6 +117,10 @@ export default function SurveyRunScreen() {
   const [saveState, setSaveState] = useState<LocalSaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  /** A submitted survey opens for consultation; editing it is an explicit choice. */
+  const [consultOnly, setConsultOnly] = useState(false);
+  /** Planter's latest household response, so the education survey resumes it instead of starting another. */
+  const [householdResponse, setHouseholdResponse] = useState<{ id: string; version: number } | null>(null);
   const timeLabel = () =>
     new Date().toLocaleTimeString(locale === 'en' ? 'en-GB' : 'fr-FR', {
       hour: '2-digit',
@@ -169,8 +179,25 @@ export default function SurveyRunScreen() {
             );
             return;
           }
-          setDefinition(def);
+          const activeCampaign = await getActiveCampaign();
+          // The response's own campaign (an older response keeps its campaign), else the active one.
+          const responseCampaign = existing?.campaignId
+            ? await getCampaign(existing.campaignId)
+            : activeCampaign;
+          if (!alive) return;
+          setDefinition(
+            responseCampaign && def.referencePeriods?.refperiod
+              ? {
+                  ...def,
+                  referencePeriods: {
+                    ...def.referencePeriods,
+                    refperiod: t('surveys.campaignPeriod', { name: responseCampaign.name }),
+                  },
+                }
+              : def
+          );
           if (existing) setResponseId(existing.id);
+          setConsultOnly(existing?.businessStatus === 'submitted');
           if (def.answerRetention === 'inactive_branch') {
             let nextTree = treeFromPayload(existing?.payload as Record<string, unknown>) ?? emptyResponseTree();
             let links: Array<{ questionnaireId: string; responseId: string; templateVersion: number; tree: ResponseTree }> = [];
@@ -180,12 +207,19 @@ export default function SurveyRunScreen() {
               if (def.requiresRoster) {
                 const households = rows
                   .filter((row) => row.templateKey.startsWith(HOUSEHOLD_QUESTIONNAIRE_ID))
+                  // Same campaign only: last year's household must not feed this year's education survey.
+                  .filter((row) => !activeCampaign || responseInCampaign(row, activeCampaign))
                   .flatMap((row) => {
                     const linked = asTree(row.payload);
                     return linked
                       ? [{ responseId: row.id, templateVersion: Number(row.templateVersion), tree: linked }]
                       : [];
                   });
+                setHouseholdResponse(
+                  households[0]
+                    ? { id: households[0].responseId, version: households[0].templateVersion }
+                    : null
+                );
                 const prepared = selectHouseholdSource(nextTree, households);
                 nextTree = prepared.tree;
                 if (prepared.household) {
@@ -208,6 +242,19 @@ export default function SurveyRunScreen() {
                       : [];
                   });
                 links = educationLinksForHousehold(existing.id, education);
+              }
+            }
+            if (
+              params.planteurId &&
+              params.questionnaireId!.startsWith(HOUSEHOLD_QUESTIONNAIRE_ID) &&
+              def.versionNumber >= HOUSEHOLD_VERSION
+            ) {
+              const planter = await getPlanteurById(accountId, params.planteurId);
+              if (planter) {
+                nextTree = seedPlanterRespondent(
+                  nextTree,
+                  `${planter.prenoms} ${planter.nom}`.trim() || planter.code
+                );
               }
             }
             setLinkedResponses(links);
@@ -432,6 +479,21 @@ export default function SurveyRunScreen() {
             if (stats.total === 0 || stats.withEn >= stats.total) return null;
             return <Text style={styles.fallbackHint}>{t('surveys.frOnlyFallback')}</Text>;
           })()}
+          {consultOnly ? (
+            <>
+              <ReadOnlyBanner message={t('surveys.consultBanner')} style={styles.btn} />
+              <SecondaryButton
+                title={t('surveys.editSubmitted')}
+                onPress={() =>
+                  Alert.alert(t('surveys.editSubmittedTitle'), t('surveys.editSubmittedBody'), [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: t('surveys.editSubmitted'), onPress: () => setConsultOnly(false) },
+                  ])
+                }
+                style={styles.btn}
+              />
+            </>
+          ) : null}
           {definition.instructions ? (
             <Text style={styles.instructions}>
               {resolveLocalized(definition.instructions, locale)}
@@ -448,16 +510,18 @@ export default function SurveyRunScreen() {
                       router.push({
                         pathname: Routes.surveyRun,
                         params: {
-                          questionnaireId: `${HOUSEHOLD_QUESTIONNAIRE_ID}:${accountId}`,
-                          versionNumber: '1',
+                          questionnaireId: HOUSEHOLD_QUESTIONNAIRE_ID,
+                          versionNumber: String(householdResponse?.version ?? HOUSEHOLD_VERSION),
                           ...(params.siteId ? { siteId: params.siteId } : {}),
                           ...(params.planteurId ? { planteurId: params.planteurId } : {}),
+                          ...(householdResponse ? { responseId: householdResponse.id } : {}),
                         },
                       } as never);
                     }
                   : undefined
               }
               showErrors={showErrors}
+              readOnly={consultOnly}
               onChange={(next) => {
                 unsavedRef.current = true;
                 setTree(next);
@@ -469,6 +533,7 @@ export default function SurveyRunScreen() {
               definition={definition}
               answers={answers}
               showErrors={showErrors}
+              readOnly={consultOnly}
               onChange={(key, value) => {
                 unsavedRef.current = true;
                 setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -476,6 +541,8 @@ export default function SurveyRunScreen() {
               }}
             />
           )}
+          {consultOnly ? null : (
+          <>
           <SecondaryButton
             title={t('surveys.saveDraft')}
             onPress={async () => {
@@ -516,6 +583,8 @@ export default function SurveyRunScreen() {
             }}
             style={styles.btn}
           />
+          </>
+          )}
         </KeyboardAwareScrollView>
       )}
     </AppScreen>

@@ -14,9 +14,12 @@ import { getConflict, markConflictStatus, upsertOpenConflict } from './syncConfl
 
 /** Tables applied to local SQLite. Others keep their cursor at zero so a later version backfills them. */
 const PULL_APPLIED_TABLES = new Set<PullMirrorTable>([
+  'campaigns',
   'sites',
   'secteurs',
   'planteurs',
+  'survey_consents_remote',
+  'parcelles',
   'formations',
   'missions',
   'survey_responses_remote',
@@ -147,6 +150,8 @@ async function localRevision(
     questionnaire: 'questionnaires',
     attachment: 'attachments',
     geometry_version: 'geometry_versions',
+    campaign: 'campaigns',
+    survey_consent: 'survey_consents',
   };
   const table = tableMap[entityType];
   if (!table) return null;
@@ -228,6 +233,8 @@ function entityTypeForTable(table: PullMirrorTable): string {
     questionnaire_assignments_remote: 'questionnaire_assignment',
     attachments_meta: 'attachment',
     geometry_versions_remote: 'geometry_version',
+    campaigns: 'campaign',
+    survey_consents_remote: 'survey_consent',
   };
   return map[table] || table;
 }
@@ -388,10 +395,15 @@ async function applyRemoteRow(
       await db.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, business_status,
+          target_type, target_id, current_step, campaign_id,
           transfer_status, payload_json, created_at, updated_at, revision
-        ) VALUES (?, ?, ?, ?, ?, ?, 'acked', ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'acked', ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           business_status = excluded.business_status,
+          target_type = COALESCE(excluded.target_type, survey_responses.target_type),
+          target_id = COALESCE(excluded.target_id, survey_responses.target_id),
+          current_step = excluded.current_step,
+          campaign_id = COALESCE(excluded.campaign_id, survey_responses.campaign_id),
           payload_json = excluded.payload_json,
           transfer_status = 'acked',
           updated_at = excluded.updated_at,
@@ -403,7 +415,138 @@ async function applyRemoteRow(
           String(row.template_key ?? 'unknown'),
           String(row.template_version ?? '1'),
           String(row.business_status ?? 'draft'),
+          bind(row.target_type),
+          bind(row.target_id),
+          Number(row.current_step ?? 1),
+          bind(row.campaign_id),
           JSON.stringify(payload),
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'survey_consents_remote': {
+      const planteurId = String(row.planteur_id ?? payload.planteurId ?? '');
+      if (!planteurId || !(await rowExists('planteurs', planteurId))) {
+        throw new Error(`consentement ${id}: planteur inconnu localement (${planteurId || '∅'})`);
+      }
+      // Phone numbers are not shared: a pulled row keeps its local phone columns (empty for others).
+      await db.runAsync(
+        `INSERT INTO survey_consents (
+          id, account_id, planteur_id, questionnaire_id, version_number, definition_id,
+          consent_version, language, status, presented_confirmed, agent_id, agent_name_snapshot,
+          respondent_name, respondent_phone_status, other_household_phone_status,
+          decided_at, created_at, updated_at, transfer_status, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'acked', ?)
+        ON CONFLICT(id) DO UPDATE SET
+          status = excluded.status,
+          presented_confirmed = excluded.presented_confirmed,
+          respondent_name = excluded.respondent_name,
+          respondent_phone_status = excluded.respondent_phone_status,
+          other_household_phone_status = excluded.other_household_phone_status,
+          agent_name_snapshot = excluded.agent_name_snapshot,
+          decided_at = excluded.decided_at,
+          updated_at = excluded.updated_at,
+          transfer_status = 'acked',
+          revision = excluded.revision`,
+        [
+          id,
+          ownerAccount,
+          planteurId,
+          String(row.questionnaire_id ?? payload.questionnaireId ?? ''),
+          String(payload.versionNumber ?? '0'),
+          String(row.definition_id ?? payload.definitionId ?? ''),
+          String(row.consent_version ?? payload.consentVersion ?? ''),
+          String(row.language ?? payload.language ?? 'fr'),
+          String(row.status ?? payload.status ?? 'in_progress'),
+          row.presented_confirmed ? 1 : 0,
+          String(payload.agentId ?? ownerAccount),
+          String(row.agent_name_snapshot ?? payload.agentNameSnapshot ?? ''),
+          bind(row.respondent_name ?? payload.respondentName),
+          bind(row.respondent_phone_status ?? payload.respondentPhoneStatus),
+          bind(row.other_household_phone_status ?? payload.otherHouseholdPhoneStatus),
+          bind(row.decided_at ?? payload.decidedAt),
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'parcelles': {
+      const planteurId = String(row.planteur_id ?? payload.planteurId ?? payload.planteur_id ?? '');
+      const siteId = String(row.site_id ?? payload.siteId ?? payload.site_id ?? '');
+      const code = payload.code == null ? null : String(payload.code);
+      const name = payload.name == null ? null : String(payload.name);
+      const area = payload.superficieDeclareeHa ?? payload.superficie_declaree_ha;
+      const year = payload.anneePlantation ?? payload.annee_plantation;
+      const mapping = payload.mappingStatus ?? payload.mapping_status;
+      if (await rowExists('parcelles', id)) {
+        // Archive payloads carry only id + status: keep the other fields.
+        await db.runAsync(
+          `UPDATE parcelles SET
+            code = COALESCE(?, code), name = COALESCE(?, name),
+            superficie_declaree_ha = COALESCE(?, superficie_declaree_ha),
+            annee_plantation = COALESCE(?, annee_plantation),
+            mapping_status = COALESCE(?, mapping_status),
+            status = ?, updated_at = ?, revision = ?
+           WHERE id = ?`,
+          [code, name, bind(area), bind(year), bind(mapping), status, ts, remoteRev, id]
+        );
+        return 'applied';
+      }
+      if (!planteurId || !(await rowExists('planteurs', planteurId))) {
+        throw new Error(`parcelle ${id}: planteur inconnu localement (${planteurId || '∅'})`);
+      }
+      if (!siteId || !(await rowExists('sites', siteId))) {
+        throw new Error(`parcelle ${id}: site inconnu localement (${siteId || '∅'})`);
+      }
+      if (!code || !name) throw new Error(`parcelle ${id}: code ou nom manquant`);
+      await db.runAsync(
+        `INSERT INTO parcelles (
+          id, account_id, planteur_id, site_id, code, name, annee_plantation,
+          superficie_declaree_ha, mapping_status, status, created_at, updated_at, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          ownerAccount,
+          planteurId,
+          siteId,
+          code,
+          name,
+          bind(year),
+          bind(area),
+          String(mapping ?? 'not_started'),
+          status,
+          created,
+          ts,
+          remoteRev,
+        ]
+      );
+      return 'applied';
+    }
+    case 'campaigns': {
+      await db.runAsync(
+        `INSERT INTO campaigns (
+          id, account_id, cooperative_id, name, starts_on, ends_on, status, created_at, updated_at, revision
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          starts_on = excluded.starts_on,
+          ends_on = excluded.ends_on,
+          status = excluded.status,
+          updated_at = excluded.updated_at,
+          revision = excluded.revision`,
+        [
+          id,
+          ownerAccount,
+          bind(row.cooperative_id),
+          String(row.name ?? payload.name ?? ''),
+          String(row.starts_on ?? payload.startsOn ?? ''),
+          String(row.ends_on ?? payload.endsOn ?? ''),
+          String(row.status ?? payload.status ?? 'active'),
           created,
           ts,
           remoteRev,
@@ -710,6 +853,7 @@ const LOCAL_TABLE_BY_ENTITY: Record<string, string> = {
   mission: 'missions',
   survey_response: 'survey_responses',
   questionnaire: 'questionnaires',
+  campaign: 'campaigns',
 };
 
 /**

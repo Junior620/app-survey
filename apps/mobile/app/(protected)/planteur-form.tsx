@@ -250,16 +250,11 @@ export default function PlanteurFormScreen() {
         }
         haptics.notificationSuccess();
         skipDirtyRef.current = true;
-        Alert.alert('Planteur créé', 'Sauvegardé en local. Envoi automatique dès que le réseau est disponible.', [
-          {
-            text: 'Ouvrir',
-            onPress: () =>
-              router.replace({
-                pathname: '/(protected)/planteur-detail',
-                params: { planteurId: p.id },
-              } as never),
-          },
-        ]);
+        // Consent, signature and photo are taken once here, at registration, for every questionnaire.
+        router.replace({
+          pathname: '/(protected)/survey-consent',
+          params: { planteurId: p.id, siteId },
+        } as never);
       }
     } catch (e: unknown) {
       Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec');

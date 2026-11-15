@@ -41,9 +41,9 @@ export async function listFormations(accountId: string, siteId: string): Promise
   const db = await getDatabase();
   return db.getAllAsync<FormationRow>(
     `SELECT id, title, theme, status, objectives, lieu, formateur, starts_at, site_id
-     FROM formations WHERE account_id = ? AND site_id = ? AND status != 'deleted'
+     FROM formations WHERE site_id = ? AND status != 'deleted'
      ORDER BY created_at DESC`,
-    [accountId, siteId]
+    [siteId]
   );
 }
 
@@ -55,8 +55,8 @@ export async function getFormation(
   return (
     (await db.getFirstAsync<FormationRow>(
       `SELECT id, title, theme, status, objectives, lieu, formateur, starts_at, site_id
-       FROM formations WHERE id = ? AND account_id = ?`,
-      [formationId, accountId]
+       FROM formations WHERE id = ?`,
+      [formationId]
     )) ?? null
   );
 }
@@ -117,8 +117,8 @@ export async function updateFormation(
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number; status: string }>(
-      `SELECT revision, status FROM formations WHERE id = ? AND account_id = ?`,
-      [formationId, accountId]
+      `SELECT revision, status FROM formations WHERE id = ?`,
+      [formationId]
     );
     if (!row) throw new Error('Formation introuvable');
     if (row.status === 'cancelled') {
@@ -138,7 +138,7 @@ export async function updateFormation(
     await tx.runAsync(
       `UPDATE formations SET title = ?, theme = ?, objectives = ?, lieu = ?, formateur = ?,
        starts_at = COALESCE(?, starts_at), updated_at = ?, revision = ?
-       WHERE id = ? AND account_id = ?`,
+       WHERE id = ?`,
       [
         payload.title,
         payload.theme,
@@ -149,7 +149,6 @@ export async function updateFormation(
         ts,
         revision,
         formationId,
-        accountId,
       ]
     );
     await enqueueOutboxInTx(tx, accountId, 'formation', formationId, 'update', payload, revision);
@@ -165,8 +164,8 @@ export async function updateSeance(
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number; status: string }>(
-      `SELECT revision, status FROM seances WHERE id = ? AND account_id = ?`,
-      [seanceId, accountId]
+      `SELECT revision, status FROM seances WHERE id = ?`,
+      [seanceId]
     );
     if (!row) throw new Error('Séance introuvable');
     if (row.status === 'closed') {
@@ -182,8 +181,8 @@ export async function updateSeance(
     };
     await tx.runAsync(
       `UPDATE seances SET starts_at = ?, ends_at = COALESCE(?, ends_at), lieu = ?, updated_at = ?, revision = ?
-       WHERE id = ? AND account_id = ?`,
-      [payload.startsAt, payload.endsAt, payload.lieu, ts, revision, seanceId, accountId]
+       WHERE id = ?`,
+      [payload.startsAt, payload.endsAt, payload.lieu, ts, revision, seanceId]
     );
     await enqueueOutboxInTx(tx, accountId, 'seance', seanceId, 'update', payload, revision);
   });
@@ -194,8 +193,8 @@ export async function cancelFormation(accountId: string, formationId: string) {
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number }>(
-      `SELECT revision FROM formations WHERE id = ? AND account_id = ?`,
-      [formationId, accountId]
+      `SELECT revision FROM formations WHERE id = ?`,
+      [formationId]
     );
     if (!row) throw new Error('Formation introuvable');
     // Refuse hard delete if participations exist
@@ -208,8 +207,8 @@ export async function cancelFormation(accountId: string, formationId: string) {
     if ((hasPresence?.c ?? 0) > 0) {
       const revision = row.revision + 1;
       await tx.runAsync(
-        `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
-        [ts, revision, formationId, accountId]
+        `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ?`,
+        [ts, revision, formationId]
       );
       await enqueueOutboxInTx(
         tx,
@@ -224,8 +223,8 @@ export async function cancelFormation(accountId: string, formationId: string) {
     }
     const revision = row.revision + 1;
     await tx.runAsync(
-      `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
-      [ts, revision, formationId, accountId]
+      `UPDATE formations SET status = 'cancelled', updated_at = ?, revision = ? WHERE id = ?`,
+      [ts, revision, formationId]
     );
     await enqueueOutboxInTx(
       tx,
@@ -243,8 +242,8 @@ export async function listSeances(accountId: string, formationId: string): Promi
   const db = await getDatabase();
   return db.getAllAsync<SeanceRow>(
     `SELECT id, formation_id, starts_at, ends_at, lieu, status, comment
-     FROM seances WHERE account_id = ? AND formation_id = ? ORDER BY starts_at DESC`,
-    [accountId, formationId]
+     FROM seances WHERE formation_id = ? ORDER BY starts_at DESC`,
+    [formationId]
   );
 }
 
@@ -253,8 +252,8 @@ export async function getSeance(accountId: string, seanceId: string): Promise<Se
   return (
     (await db.getFirstAsync<SeanceRow>(
       `SELECT id, formation_id, starts_at, ends_at, lieu, status, comment
-       FROM seances WHERE id = ? AND account_id = ?`,
-      [seanceId, accountId]
+       FROM seances WHERE id = ?`,
+      [seanceId]
     )) ?? null
   );
 }
@@ -279,8 +278,8 @@ export async function createSeance(
     // Move parent formation to in_progress when first seance created
     await tx.runAsync(
       `UPDATE formations SET status = CASE WHEN status = 'planned' THEN 'in_progress' ELSE status END,
-       updated_at = ? WHERE id = ? AND account_id = ?`,
-      [ts, input.formationId, accountId]
+       updated_at = ? WHERE id = ?`,
+      [ts, input.formationId]
     );
   });
   return id;
@@ -291,15 +290,15 @@ export async function closeSeance(accountId: string, seanceId: string, comment: 
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number }>(
-      `SELECT revision FROM seances WHERE id = ? AND account_id = ?`,
-      [seanceId, accountId]
+      `SELECT revision FROM seances WHERE id = ?`,
+      [seanceId]
     );
     if (!row) throw new Error('Séance introuvable');
     const revision = row.revision + 1;
     await tx.runAsync(
       `UPDATE seances SET status = 'closed', ends_at = ?, comment = ?, updated_at = ?, revision = ?
-       WHERE id = ? AND account_id = ?`,
-      [ts, comment, ts, revision, seanceId, accountId]
+       WHERE id = ?`,
+      [ts, comment, ts, revision, seanceId]
     );
     await enqueueOutboxInTx(
       tx,
@@ -323,9 +322,9 @@ export async function listParticipations(
             pl.code, pl.nom, pl.prenoms
      FROM participations p
      JOIN planteurs pl ON pl.id = p.planteur_id
-     WHERE p.account_id = ? AND p.seance_id = ?
+     WHERE p.seance_id = ?
      ORDER BY pl.nom, pl.prenoms`,
-    [accountId, seanceId]
+    [seanceId]
   );
 }
 
@@ -374,8 +373,8 @@ export async function setAttendance(
   const ts = nowIso();
   await runTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<{ revision: number }>(
-      `SELECT revision FROM participations WHERE id = ? AND account_id = ?`,
-      [participationId, accountId]
+      `SELECT revision FROM participations WHERE id = ?`,
+      [participationId]
     );
     if (!row) throw new Error('Participation introuvable');
     const revision = row.revision + 1;
@@ -383,8 +382,8 @@ export async function setAttendance(
     const markedBy = attendance === 'not_marked' ? null : agentId;
     await tx.runAsync(
       `UPDATE participations SET attendance = ?, marked_at = ?, marked_by_agent_id = ?,
-       updated_at = ?, revision = ? WHERE id = ? AND account_id = ?`,
-      [attendance, markedAt, markedBy, ts, revision, participationId, accountId]
+       updated_at = ?, revision = ? WHERE id = ?`,
+      [attendance, markedAt, markedBy, ts, revision, participationId]
     );
     await enqueueOutboxInTx(
       tx,
@@ -413,8 +412,8 @@ export async function getAttendanceSummary(accountId: string, seanceId: string) 
       SUM(CASE WHEN attendance = 'absent' THEN 1 ELSE 0 END) as absent,
       SUM(CASE WHEN attendance = 'excused' THEN 1 ELSE 0 END) as excused,
       SUM(CASE WHEN attendance = 'not_marked' THEN 1 ELSE 0 END) as not_marked
-     FROM participations WHERE account_id = ? AND seance_id = ?`,
-    [accountId, seanceId]
+     FROM participations WHERE seance_id = ?`,
+    [seanceId]
   );
   return {
     total: row?.total ?? 0,
@@ -433,9 +432,9 @@ export async function listPlanteursForSiteNotInSeance(
   const db = await getDatabase();
   return db.getAllAsync<{ id: string; code: string; nom: string; prenoms: string }>(
     `SELECT id, code, nom, prenoms FROM planteurs
-     WHERE account_id = ? AND site_id = ? AND status = 'active'
+     WHERE site_id = ? AND status = 'active'
        AND id NOT IN (SELECT planteur_id FROM participations WHERE seance_id = ?)
      ORDER BY nom, prenoms`,
-    [accountId, siteId, seanceId]
+    [siteId, seanceId]
   );
 }

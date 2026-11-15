@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppScreen, AppHeader, EmptyState, PrimaryButton, SemanticIcon } from '../../src/components/common';
@@ -14,7 +14,12 @@ import {
   type ProducerSurveyItem,
 } from '../../src/survey/loadProducerSurveys';
 import { haptics } from '../../src/utils/haptics';
-import { listConsentRows, type ConsentListRow } from '../../src/data/repositories/surveyConsentsRepository';
+import { isPerCampaignCategory } from '../../src/survey/campaigns';
+import {
+  consentRowFor,
+  listConsentRows,
+  type ConsentListRow,
+} from '../../src/data/repositories/surveyConsentsRepository';
 import { consentListPhase } from '../../src/survey/consentPolicy';
 
 export default function PlanteurCategorieScreen() {
@@ -66,7 +71,7 @@ export default function PlanteurCategorieScreen() {
   );
 
   const phaseOf = (item: ProducerSurveyItem) => {
-    const row = consents.find((c) => c.questionnaireId === item.questionnaireId);
+    const row = consentRowFor(consents, item.questionnaireId);
     return consentListPhase(row?.snapshot ?? null, item.status);
   };
 
@@ -103,6 +108,9 @@ export default function PlanteurCategorieScreen() {
         />
       ) : (
         <ScrollView contentContainerStyle={styles.body}>
+          {items.some((item) => isPerCampaignCategory(item.category) && !item.campaign) ? (
+            <Text style={styles.noCampaign}>{t('producerHub.noActiveCampaign')}</Text>
+          ) : null}
           {items.map((item) => {
             const phase = phaseOf(item);
             const declined = phase === 'declined';
@@ -146,6 +154,39 @@ export default function PlanteurCategorieScreen() {
                 }}
               />
               )}
+              {item.previous.length > 0 ? (
+                <View style={styles.previous}>
+                  <Text style={styles.meta}>{t('producerHub.previousCampaigns')}</Text>
+                  {item.previous.map((old) => (
+                    <Pressable
+                      key={old.responseId}
+                      style={styles.previousRow}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('producerHub.consultCampaign', {
+                        campaign: old.campaignName ?? t('producerHub.noCampaign'),
+                      })}
+                      onPress={() => {
+                        haptics.selection();
+                        void nav.startSurvey({
+                          questionnaireId: item.questionnaireId,
+                          versionNumber: old.versionNumber,
+                          siteId,
+                          planteurId,
+                          responseId: old.responseId,
+                          origin: 'terrain',
+                        });
+                      }}
+                    >
+                      <SemanticIcon name="view" size={18} color={colors.vert} />
+                      <Text style={styles.previousLabel}>
+                        {t('producerHub.consultCampaign', {
+                          campaign: old.campaignName ?? t('producerHub.noCampaign'),
+                        })}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
             );
           })}
@@ -170,5 +211,15 @@ const styles = StyleSheet.create({
   status: { ...typography.presets.labelSmall, color: colors.vert, marginTop: 4, fontFamily: typography.fontFamily.bold },
   declined: { ...typography.presets.labelSmall, color: colors.erreur, marginTop: 4, fontFamily: typography.fontFamily.bold },
   meta: { ...typography.presets.meta, color: colors.texteSecondaire, marginTop: 2 },
-  sync: { ...typography.presets.labelSmall, color: colors.attention, marginTop: 4 },
+  sync: { ...typography.presets.labelSmall, color: colors.attentionFonce, marginTop: 4 },
+  noCampaign: {
+    ...typography.presets.bodySmall,
+    color: colors.attentionFonce,
+    backgroundColor: colors.ambreClair,
+    padding: spacing.s,
+    borderRadius: radius.s,
+  },
+  previous: { borderTopWidth: 1, borderTopColor: colors.bordure, paddingTop: spacing.s, gap: spacing.xs },
+  previousRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.s, minHeight: 44 },
+  previousLabel: { ...typography.presets.bodyMedium, color: colors.vert },
 });

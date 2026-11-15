@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   canStartSurvey,
+  withoutConsentPhones,
+  consentRowFor,
+  PLANTER_CONSENT_SCOPE,
   consentListPhase,
   EMPTY_CONSENT,
   resolveConsentStep,
@@ -116,5 +119,66 @@ describe('consent sequence', () => {
     assert.equal(consentListPhase(ready, 'done'), 'done');
     assert.equal(consentListPhase(ready, 'in_progress'), 'in_progress');
     assert.equal(consentListPhase(null, 'todo'), 'todo');
+  });
+});
+
+describe('consentement unique par planteur', () => {
+  const ready = { ...EMPTY_CONSENT, status: 'accepted' as const };
+  const row = (questionnaireId: string, status: 'accepted' | 'declined' | 'in_progress', isReady = false) => ({
+    questionnaireId,
+    status,
+    snapshot: ready,
+    ready: isReady,
+  });
+
+  it('le consentement du planteur couvre tous les questionnaires', () => {
+    const rows = [row('annuelle', 'in_progress'), row(PLANTER_CONSENT_SCOPE, 'accepted', true)];
+    assert.equal(consentRowFor(rows, 'annuelle')?.questionnaireId, PLANTER_CONSENT_SCOPE);
+    assert.equal(consentRowFor(rows, 'menage')?.questionnaireId, PLANTER_CONSENT_SCOPE);
+  });
+
+  it('un ancien consentement complet vaut pour les autres questionnaires', () => {
+    const rows = [row('menage', 'accepted', true)];
+    assert.equal(consentRowFor(rows, 'annuelle')?.questionnaireId, 'menage');
+  });
+
+  it('un ancien refus reste limité à son questionnaire', () => {
+    const rows = [row('menage', 'declined'), row('annuelle', 'accepted', true)];
+    assert.equal(consentRowFor(rows, 'menage')?.status, 'declined');
+    assert.equal(consentRowFor(rows, 'education')?.questionnaireId, 'annuelle');
+    assert.equal(consentRowFor([], 'menage'), null);
+  });
+});
+
+describe('consentement partagé entre agents du site', () => {
+  it('les numéros ne quittent pas la copie privée, les statuts oui', () => {
+    const shared = withoutConsentPhones({
+      planteurId: 'p1',
+      status: 'accepted',
+      respondentPhoneStatus: 'provided',
+      respondentPhone: '+237677123456',
+      otherHouseholdPhoneStatus: 'provided',
+      otherHouseholdPhone: '+237699000000',
+    });
+    assert.equal('respondentPhone' in shared, false);
+    assert.equal('otherHouseholdPhone' in shared, false);
+    assert.equal(shared.respondentPhoneStatus, 'provided');
+  });
+
+  it('un consentement reçu sans numéro reste complet pour l’autre agent', () => {
+    const pulled: ConsentSnapshot = {
+      ...EMPTY_CONSENT,
+      presentedConfirmed: true,
+      respondentName: 'Awa',
+      status: 'accepted',
+      respondentPhoneStatus: 'provided',
+      respondentPhone: null,
+      otherHouseholdPhoneStatus: 'provided',
+      otherHouseholdPhone: null,
+      hasSignature: true,
+      hasPhoto: true,
+    };
+    assert.equal(canStartSurvey(pulled), true);
+    assert.equal(canStartSurvey({ ...pulled, respondentPhone: '123' }), false);
   });
 });

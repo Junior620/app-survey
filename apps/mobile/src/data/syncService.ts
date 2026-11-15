@@ -14,6 +14,7 @@ import {
 import { pullRemoteChanges, resolveConflict, type PullResult } from './syncPull';
 import { listUnresolvedConflicts, upsertOpenConflict } from './syncConflicts';
 import { isOutboxRowDue } from './outboxBackoff';
+import { withoutConsentPhones } from '../survey/consentPolicy';
 
 const PUSH_BATCH_SIZE = 50;
 /** Supabase's own session, which also exists when "remember me" is off. */
@@ -201,6 +202,85 @@ function resolveAttachmentContentType(
   return fromExt && allowed.has(fromExt) ? fromExt : 'application/octet-stream';
 }
 
+/**
+ * A consent is pushed twice: the shared row without phone numbers (survey_consents_remote,
+ * readable by the agents of the planter's site) and the full private copy in outbox_ingest
+ * (author and protection roles only).
+ */
+async function pushConsent(
+  row: OutboxRow,
+  payload: Record<string, unknown>,
+  base: Record<string, unknown>,
+  accountId: string,
+  cooperativeId: string,
+  ts: string
+): Promise<void> {
+  const db = await getDatabase();
+  const planteurId = String(payload.planteurId ?? payload.planteur_id ?? '');
+  const site = await db.getFirstAsync<{ site_id: string | null }>(
+    `SELECT site_id FROM planteurs WHERE id = ?`,
+    [planteurId]
+  );
+  const shared = withoutConsentPhones(payload);
+  await upsertMirror('survey_consents_remote', {
+    ...base,
+    site_id: site?.site_id ?? null,
+    planteur_id: planteurId,
+    questionnaire_id: String(payload.questionnaireId ?? payload.questionnaire_id ?? ''),
+    consent_version: String(payload.consentVersion ?? payload.consent_version ?? ''),
+    definition_id: String(payload.definitionId ?? payload.definition_id ?? ''),
+    language: String(payload.language ?? 'fr'),
+    status: String(payload.status ?? 'in_progress'),
+    presented_confirmed: !!(payload.presentedConfirmed ?? payload.presented_confirmed),
+    respondent_name: payload.respondentName ?? payload.respondent_name ?? null,
+    // Statuses only (provided / no phone / refused): the numbers stay private.
+    respondent_phone_status: payload.respondentPhoneStatus ?? null,
+    other_household_phone_status: payload.otherHouseholdPhoneStatus ?? null,
+    agent_name_snapshot: payload.agentNameSnapshot ?? payload.agent_name_snapshot ?? null,
+    decided_at: payload.decidedAt ?? payload.decided_at ?? null,
+    payload: shared,
+  });
+  await upsertMirror('outbox_ingest', {
+    id: row.id,
+    account_id: accountId,
+    cooperative_id: cooperativeId,
+    entity_type: 'survey_consent',
+    entity_id: row.entity_id,
+    operation: row.operation,
+    payload,
+    revision: row.revision,
+    received_at: ts,
+  });
+}
+
+/** Site of an attachment's parent record, so the server can share it with that site's agents. */
+async function siteForAttachment(entityType: string, entityId: string): Promise<string | null> {
+  if (!entityId) return null;
+  const db = await getDatabase();
+  if (entityType.startsWith('consent_')) {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT p.site_id FROM survey_consents c JOIN planteurs p ON p.id = c.planteur_id WHERE c.id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  if (entityType === 'planteur') {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT site_id FROM planteurs WHERE id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  if (entityType === 'seance' || entityType.startsWith('seance_')) {
+    const row = await db.getFirstAsync<{ site_id: string | null }>(
+      `SELECT f.site_id FROM seances s JOIN formations f ON f.id = s.formation_id WHERE s.id = ?`,
+      [entityId]
+    );
+    return row?.site_id ?? null;
+  }
+  return null;
+}
+
 async function upsertMirror(
   table: string,
   record: Record<string, unknown>
@@ -266,6 +346,10 @@ async function pushOne(
     });
     await upsertMirror('attachments_meta', {
       ...base,
+      site_id: await siteForAttachment(
+        String(payload.entity_type ?? payload.entityType ?? ''),
+        String(payload.entity_id ?? payload.entityId ?? '')
+      ),
       entity_type: payload.entity_type ?? payload.entityType ?? null,
       entity_id: payload.entity_id ?? payload.entityId ?? null,
       storage_path: storagePath,
@@ -316,12 +400,53 @@ async function pushOne(
   }
 
   if (entityType === 'survey_response') {
+    // Identity lives on the local row, not in the answers payload.
+    const db = await getDatabase();
+    const local = await db.getFirstAsync<{
+      template_key: string;
+      template_version: string;
+      site_id: string | null;
+      target_type: string | null;
+      target_id: string | null;
+      current_step: number | null;
+      campaign_id: string | null;
+      business_status: string;
+      created_at: string;
+    }>(
+      `SELECT template_key, template_version, site_id, target_type, target_id, current_step,
+              campaign_id, business_status, created_at
+       FROM survey_responses WHERE id = ?`,
+      [entityId]
+    );
     await upsertMirror('survey_responses_remote', {
       ...base,
-      site_id: payload.siteId ?? payload.site_id ?? null,
-      template_key: String(payload.templateKey ?? payload.template_key ?? 'unknown'),
-      template_version: String(payload.templateVersion ?? payload.template_version ?? '1'),
-      business_status: String(payload.businessStatus ?? payload.business_status ?? 'draft'),
+      created_at: local?.created_at ?? base.created_at,
+      site_id: local?.site_id ?? payload.siteId ?? payload.site_id ?? null,
+      template_key: String(local?.template_key ?? payload.templateKey ?? 'unknown'),
+      template_version: String(local?.template_version ?? payload.templateVersion ?? '1'),
+      business_status: String(local?.business_status ?? payload.businessStatus ?? 'draft'),
+      target_type: local?.target_type ?? null,
+      target_id: local?.target_id ?? null,
+      current_step: local?.current_step ?? null,
+      campaign_id: local?.campaign_id ?? null,
+      payload,
+    });
+    return;
+  }
+
+  if (entityType === 'survey_consent') {
+    await pushConsent(row, payload, base, accountId, cooperativeId, ts);
+    return;
+  }
+
+  if (entityType === 'campaign') {
+    await upsertMirror('campaigns', {
+      ...base,
+      cooperative_id: String(payload.cooperativeId ?? cooperativeId),
+      name: String(payload.name ?? ''),
+      starts_on: String(payload.startsOn ?? ''),
+      ends_on: String(payload.endsOn ?? ''),
+      status: String(payload.status ?? 'active'),
       payload,
     });
     return;

@@ -2,6 +2,7 @@ import type { SurveyAnswerMap } from '@appsurvey/shared';
 import { getDatabase, newId, nowIso, runTransaction } from '../db';
 import { enqueueOutboxInTx } from './outboxRepository';
 import type { ResponseTree } from '../../survey/responseTree';
+import { getActiveCampaign } from './campaignsRepository';
 
 export type SurveyResponseRecord = {
   id: string;
@@ -14,6 +15,8 @@ export type SurveyResponseRecord = {
   businessStatus: string;
   transferStatus: string;
   currentStep: number;
+  /** Campaign the response was started in; null for responses saved before campaigns. */
+  campaignId: string | null;
   payload: SurveyAnswerMap & { meta?: Record<string, unknown> };
   createdAt: string;
   updatedAt: string;
@@ -31,6 +34,7 @@ type Row = {
   business_status: string;
   transfer_status: string;
   current_step: number;
+  campaign_id: string | null;
   payload_json: string;
   created_at: string;
   updated_at: string;
@@ -55,6 +59,7 @@ function mapRow(r: Row): SurveyResponseRecord {
     businessStatus: r.business_status,
     transferStatus: r.transfer_status,
     currentStep: r.current_step,
+    campaignId: r.campaign_id ?? null,
     payload,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -68,8 +73,8 @@ export async function getSurveyResponse(
 ): Promise<SurveyResponseRecord | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Row>(
-    `SELECT * FROM survey_responses WHERE id = ? AND account_id = ?`,
-    [responseId, accountId]
+    `SELECT * FROM survey_responses WHERE id = ?`,
+    [responseId]
   );
   return row ? mapRow(row) : null;
 }
@@ -84,12 +89,12 @@ export async function findInProgressResponse(
   const db = await getDatabase();
   const row = await db.getFirstAsync<Row>(
     `SELECT * FROM survey_responses
-     WHERE account_id = ? AND template_key = ? AND template_version = ?
+     WHERE template_key = ? AND template_version = ?
        AND IFNULL(site_id, '') = IFNULL(?, '')
        AND IFNULL(target_id, '') = IFNULL(?, '')
        AND business_status IN ('draft', 'in_progress')
      ORDER BY updated_at DESC LIMIT 1`,
-    [accountId, templateKey, templateVersion, siteId, targetId ?? null]
+    [templateKey, templateVersion, siteId, targetId ?? null]
   );
   return row ? mapRow(row) : null;
 }
@@ -118,11 +123,12 @@ export async function saveSurveyResponse(input: {
       }
     : { ...input.answers, meta: input.meta };
   const id = input.responseId ?? newId();
+  const campaignId = (await getActiveCampaign())?.id ?? null;
 
   await runTransaction(db, async (tx) => {
     const existing = await tx.getFirstAsync<{ id: string; revision: number }>(
-      `SELECT id, revision FROM survey_responses WHERE id = ? AND account_id = ?`,
-      [id, input.accountId]
+      `SELECT id, revision FROM survey_responses WHERE id = ?`,
+      [id]
     );
     if (existing) {
       const revision = existing.revision + 1;
@@ -131,7 +137,7 @@ export async function saveSurveyResponse(input: {
           payload_json = ?, current_step = ?, business_status = ?, updated_at = ?,
           revision = ?, transfer_status = 'pending',
           site_id = ?, target_type = ?, target_id = ?
-         WHERE id = ? AND account_id = ?`,
+         WHERE id = ?`,
         [
           JSON.stringify(payload),
           input.currentStep,
@@ -142,7 +148,6 @@ export async function saveSurveyResponse(input: {
           input.targetType ?? null,
           input.targetId ?? null,
           id,
-          input.accountId,
         ]
       );
       if (input.businessStatus !== 'preview') {
@@ -160,8 +165,9 @@ export async function saveSurveyResponse(input: {
       await tx.runAsync(
         `INSERT INTO survey_responses (
           id, account_id, site_id, template_key, template_version, target_type, target_id,
-          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 1)`,
+          business_status, transfer_status, current_step, payload_json, created_at, updated_at, revision,
+          campaign_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 1, ?)`,
         [
           id,
           input.accountId,
@@ -175,6 +181,7 @@ export async function saveSurveyResponse(input: {
           JSON.stringify(payload),
           ts,
           ts,
+          input.businessStatus === 'preview' ? null : campaignId,
         ]
       );
       if (input.businessStatus !== 'preview') {
@@ -204,9 +211,9 @@ export async function listResponsesForTemplate(
   const db = await getDatabase();
   const rows = await db.getAllAsync<Row>(
     opts?.includePreview
-      ? `SELECT * FROM survey_responses WHERE account_id = ? AND template_key = ? ORDER BY updated_at DESC`
-      : `SELECT * FROM survey_responses WHERE account_id = ? AND template_key = ? AND business_status != 'preview' ORDER BY updated_at DESC`,
-    [accountId, templateKey]
+      ? `SELECT * FROM survey_responses WHERE template_key = ? ORDER BY updated_at DESC`
+      : `SELECT * FROM survey_responses WHERE template_key = ? AND business_status != 'preview' ORDER BY updated_at DESC`,
+    [templateKey]
   );
   return rows.map(mapRow);
 }
@@ -219,9 +226,9 @@ export async function listResponsesForTarget(
   const db = await getDatabase();
   const rows = await db.getAllAsync<Row>(
     `SELECT * FROM survey_responses
-     WHERE account_id = ? AND target_id = ? AND business_status != 'preview'
+     WHERE target_id = ? AND business_status != 'preview'
      ORDER BY updated_at DESC`,
-    [accountId, targetId]
+    [targetId]
   );
   return rows.map(mapRow);
 }

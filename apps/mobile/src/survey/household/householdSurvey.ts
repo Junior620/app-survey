@@ -5,9 +5,11 @@ import type {
   SectionDefinition,
 } from '@appsurvey/shared/src/types/questionnaire';
 import type { Expr, PaperCodeMap } from '@appsurvey/shared/src/types/ruleAst';
+import { DISTANCE_RANGE_PAIRS } from '../distanceRanges';
+import { PLANTER_ROW_ID } from './planterRespondent';
 
 export const HOUSEHOLD_QUESTIONNAIRE_ID = 'enquete-menage';
-export const HOUSEHOLD_VERSION = 1;
+export const HOUSEHOLD_VERSION = 2;
 export const EDUCATION_QUESTIONNAIRE_ID = 'protection-enfant-education';
 
 export const HOUSEHOLD_QUESTION_KEYS = [
@@ -117,24 +119,8 @@ const fieldOneOf = (field: string, ...codes: string[]): Expr => ({
   kind: 'or',
   conditions: codes.map((code) => ({ kind: 'equals', field, value: code })),
 });
-const km = (max: number, far: string): Pick<QuestionDefinition, 'specialValues' | 'validationRules' | 'warningRules' | 'config'> => ({
-  config: { unit: 'km' },
-  specialValues: unknown,
-  validationRules: [{ id: 'V2', assertion: { kind: 'greaterThan', field: 'self', value: 0 }, message: POSITIVE }],
-  warningRules: [
-    {
-      id: 'W1',
-      assertion: {
-        kind: 'or',
-        conditions: [
-          { kind: 'equals', field: 'self', value: UNKNOWN },
-          { kind: 'lessThanOrEqual', field: 'self', value: max },
-        ],
-      },
-      message: far,
-    },
-    { id: 'W3', assertion: { kind: 'notEquals', field: 'self', value: UNKNOWN }, message: APPROX },
-  ],
+const distanceRange = (): Pick<QuestionDefinition, 'options'> => ({
+  options: opts(DISTANCE_RANGE_PAIRS),
 });
 const money = (): Pick<QuestionDefinition, 'specialValues' | 'warningRules' | 'config'> => ({
   config: { unit: 'FCFA' },
@@ -348,34 +334,13 @@ export function buildHouseholdSnapshot(): QuestionnaireDefinitionSnapshot {
         ['03', 'Par un chemin principalement accessible à pied'],
       ]),
     }),
-    q(services, 'tarrroad_km', 'decimal', 'À quelle distance en kilomètre de votre maison se trouve la prochaine route goudronnée ?', next(), {
+    q(services, 'tarrroad_km', 'single_choice', 'À quelle distance de votre maison se trouve la prochaine route goudronnée ?', next(), {
       enablement: fieldOneOf('house_access', '02', '03'),
-      config: { unit: 'km' },
-      specialValues: unknown,
-      warningRules: [
-        {
-          id: 'W1',
-          assertion: {
-            kind: 'or',
-            conditions: [
-              { kind: 'equals', field: 'self', value: UNKNOWN },
-              {
-                kind: 'and',
-                conditions: [
-                  { kind: 'greaterThanOrEqual', field: 'self', value: 0 },
-                  { kind: 'lessThanOrEqual', field: 'self', value: 100 },
-                ],
-              },
-            ],
-          },
-          message: 'ATTENTION : Plus de 100 km, êtes-vous certain ? Distance en KM !!! Vérifier.',
-        },
-        { id: 'W2', assertion: { kind: 'notEquals', field: 'self', value: UNKNOWN }, message: APPROX },
-      ],
+      ...distanceRange(),
     }),
-    q(services, 'inpmarket_km', 'decimal', 'À quelle distance en kilomètre de votre maison se trouve le marché / boutique le plus proche où l’on trouve des intrants (engrais, insecticides) ?', next(), {
+    q(services, 'inpmarket_km', 'single_choice', 'À quelle distance de votre maison se trouve le marché / boutique le plus proche où l’on trouve des intrants (engrais, insecticides) ?', next(), {
       help: 'Si l’acheteur lui livre, on prend quand même la distance à son magasin. S’il y en a plusieurs, prendre celui où les achats sont les plus fréquents.',
-      ...km(40, 'ATTENTION : Plus de 40 kilomètres, êtes-vous certain ?'),
+      ...distanceRange(),
     }),
     q(services, 'inpmarket_trans', 'single_choice', 'Comment vous ou un membre de votre ménage rendez-vous habituellement au marché/boutique des intrants ?', next(), {
       options: opts([
@@ -392,16 +357,16 @@ export function buildHouseholdSnapshot(): QuestionnaireDefinitionSnapshot {
       enablement: fieldOneOf('inpmarket_trans', '001', '002', '003'),
       config: { unit: 'FCFA' },
     }),
-    q(services, 'primschool_km', 'decimal', 'À quelle distance en kilomètre de votre maison se trouve l’école primaire la plus proche ?', next(), {
-      ...km(20, 'ATTENTION : Plus de 20 kilomètres, êtes-vous certain ?'),
+    q(services, 'primschool_km', 'single_choice', 'À quelle distance de votre maison se trouve l’école primaire la plus proche ?', next(), {
+      ...distanceRange(),
     }),
     q(services, 'primschool_cost', 'integer', 'Quel est le coût moyen d’un aller-retour à l’école (en FCFA) ?', next(), {
       enablement: { kind: 'notEquals', field: 'primschool_trans', value: 4 },
       ...money(),
       warningRules: [{ id: 'W', assertion: { kind: 'notEquals', field: 'self', value: UNKNOWN }, message: APPROX }],
     }),
-    q(services, 'secschool_km', 'decimal', 'À quelle distance en kilomètre de votre maison se trouve l’école secondaire la plus proche ?', next(), {
-      ...km(100, 'ATTENTION : Plus de 100 kilomètres, êtes-vous certain ?'),
+    q(services, 'secschool_km', 'single_choice', 'À quelle distance de votre maison se trouve l’école secondaire la plus proche ?', next(), {
+      ...distanceRange(),
     }),
     q(services, 'secschool_trans', 'single_choice', 'Comment votre ou vos enfant(s) se rendent habituellement à l’école secondaire ?', next(), {
       help: 'Si l’enfant ou les enfants vivent en internat, il s’agit du transport qu’il effectue entre son domicile et l’internat plutôt qu’un transport quotidien.',
@@ -449,8 +414,8 @@ export function buildHouseholdSnapshot(): QuestionnaireDefinitionSnapshot {
         ['9888', 'Ne sais pas'],
       ]),
     }),
-    q(services, 'market_km', 'decimal', 'À quelle distance en kilomètre de votre maison se trouve le marché alimentaire le plus proche ?', next(), {
-      ...km(40, 'ATTENTION : Plus de 40 kilomètres, êtes-vous certain ?'),
+    q(services, 'market_km', 'single_choice', 'À quelle distance de votre maison se trouve le marché alimentaire le plus proche ?', next(), {
+      ...distanceRange(),
     }),
     q(services, 'market_cost', 'integer', 'Quel est le coût du transport (en FCFA) ?', next(), {
       enablement: {
@@ -650,7 +615,7 @@ export function buildHouseholdSnapshot(): QuestionnaireDefinitionSnapshot {
       visibility: null,
       questions: [
         q(members, 'hhlist', 'list', 'Pouvez-vous me donner le prénom de tous les membres de votre ménage ?', 1, {
-          help: 'COMMENCER PAR LE RÉPONDANT',
+          help: 'Le planteur, qui répond à l’entretien, est déjà en tête de liste. Ajoutez les autres membres du ménage.',
           validationRules: [
             { id: 'V-numeric', assertion: { kind: 'labelsNotNumeric' }, message: 'ERREUR : Vous avez saisi un nombre et non un nom.' },
           ],
@@ -662,8 +627,16 @@ export function buildHouseholdSnapshot(): QuestionnaireDefinitionSnapshot {
             },
           ],
         }),
-        q(members, 'respondent', 'linked_single_choice', 'Qui est le principal répondant de cet entretien ?', 2, {
+        q(members, 'respondent', 'linked_single_choice', 'Répondant de cet entretien (le planteur)', 2, {
+          help: 'L’enquête ménage est toujours répondue par le planteur.',
           optionSource: { type: 'roster', rosterKey: 'hh_roster', scope: 'local' },
+          validationRules: [
+            {
+              id: 'V-planter',
+              assertion: { kind: 'equals', field: 'self', value: PLANTER_ROW_ID },
+              message: 'ERREUR : Le répondant doit être le planteur.',
+            },
+          ],
         }),
       ],
       sections: [

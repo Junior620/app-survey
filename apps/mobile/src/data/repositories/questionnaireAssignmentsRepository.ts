@@ -57,13 +57,13 @@ export async function listActiveAssignmentsForSite(
      FROM questionnaire_assignments a
      JOIN questionnaires q ON q.id = a.questionnaire_id
      LEFT JOIN sites s ON s.id = a.site_id
-     WHERE a.account_id = ? AND a.site_id = ?
+     WHERE a.site_id = ?
        AND a.status = 'active'
        AND q.status = 'published'
        AND a.starts_at <= ?
        AND (a.ends_at IS NULL OR a.ends_at >= ?)
      ORDER BY q.title COLLATE NOCASE`,
-    [accountId, siteId, now, now]
+    [siteId, now, now]
   );
   return rows.map((r) => ({
     ...mapAssignment(r),

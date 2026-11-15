@@ -14,8 +14,13 @@ import { colors, spacing, typography } from '../../../../src/theme';
 import {
   ADMIN_MANAGED_ROLES,
   getUserById,
+  getUserSiteIds,
+  setUserSites,
   updateUserProfile,
 } from '../../../../src/data/adminUsers';
+import type { SiteListItem } from '@appsurvey/shared';
+import { listSitesForAccount } from '../../../../src/data/repositories/sitesRepository';
+import { useAuthStore } from '../../../../src/stores/useAuthStore';
 import { formatRoleLabel } from '../../../../src/utils/roleLabels';
 import { haptics } from '../../../../src/utils/haptics';
 
@@ -30,6 +35,12 @@ export default function AdminUserDetailScreen() {
   const [region, setRegion] = useState('');
   const [role, setRole] = useState<UserRole>('AGENT_TERRAIN');
   const [nameError, setNameError] = useState<string | undefined>();
+  const { user: me, profile: myProfile } = useAuthStore();
+  const [cooperativeId, setCooperativeId] = useState<string | null>(null);
+  const [sites, setSites] = useState<SiteListItem[]>([]);
+  const [siteIds, setSiteIds] = useState<Set<string>>(new Set());
+  /** Agents only see and share the data of their assigned sites. */
+  const siteScoped = role === 'AGENT_TERRAIN' || role === 'RESPONSABLE_SITE';
 
   useFocusEffect(
     useCallback(() => {
@@ -52,6 +63,14 @@ export default function AdminUserDetailScreen() {
           setFullName(user.fullName);
           setRegion(user.region || '');
           setRole(user.role);
+          setCooperativeId(user.cooperativeId ?? myProfile?.cooperativeId ?? null);
+          const [siteList, assigned] = await Promise.all([
+            listSitesForAccount(me?.id || myProfile?.id || 'local-account'),
+            getUserSiteIds(id).catch(() => [] as string[]),
+          ]);
+          if (!alive) return;
+          setSites(siteList);
+          setSiteIds(new Set(assigned));
           setMissing(false);
         } catch (e: unknown) {
           if (alive) {
@@ -85,6 +104,9 @@ export default function AdminUserDetailScreen() {
         role,
         region: region.trim() || null,
       });
+      if (siteScoped && cooperativeId) {
+        await setUserSites(id, cooperativeId, [...siteIds]);
+      }
       haptics.notificationSuccess();
       Alert.alert('Enregistré', 'Le profil a été mis à jour.', [
         { text: 'OK', onPress: () => router.back() },
@@ -156,6 +178,45 @@ export default function AdminUserDetailScreen() {
             })}
           </View>
 
+          {siteScoped ? (
+            <>
+              <Text style={styles.roleTitle}>Sites de l’agent</Text>
+              <Text style={styles.hint}>
+                L’agent voit et partage les planteurs, parcelles et enquêtes de ces sites avec les autres agents du même site.
+              </Text>
+              <View style={styles.roles}>
+                {sites.length === 0 ? (
+                  <Text style={styles.hint}>Aucun site sur cet appareil. Synchronisez d’abord.</Text>
+                ) : (
+                  sites.map((site) => {
+                    const on = siteIds.has(site.id);
+                    return (
+                      <Pressable
+                        key={site.id}
+                        style={[styles.roleChip, on && styles.roleChipOn]}
+                        onPress={() => {
+                          haptics.selection();
+                          setSiteIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(site.id)) next.delete(site.id);
+                            else next.add(site.id);
+                            return next;
+                          });
+                        }}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: on }}
+                      >
+                        <Text style={[styles.roleText, on && styles.roleTextOn]}>
+                          {site.code} — {site.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })
+                )}
+              </View>
+            </>
+          ) : null}
+
           <PrimaryButton
             title="Enregistrer"
             onPress={() => void onSave()}
@@ -182,6 +243,10 @@ const styles = StyleSheet.create({
   },
   roles: {
     gap: spacing.xs,
+  },
+  hint: {
+    ...typography.presets.bodySmall,
+    color: colors.texteSecondaire,
   },
   roleChip: {
     minHeight: 48,
